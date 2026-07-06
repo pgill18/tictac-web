@@ -6,7 +6,7 @@
   <title>tictac — learn and play tic-tac-toe</title>
   <!-- Inline SVG favicon (data URI) — no separate file, avoids the favicon.ico 404 on file:// and any static host. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232d6cdf'/%3E%3Cg stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='11.5' y1='2' x2='11.5' y2='30'/%3E%3Cline x1='20.5' y1='2' x2='20.5' y2='30'/%3E%3Cline x1='2' y1='11.5' x2='30' y2='11.5'/%3E%3Cline x1='2' y1='20.5' x2='30' y2='20.5'/%3E%3C/g%3E%3Ctext x='6.5' y='9.5' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EX%3C/text%3E%3Ctext x='23' y='28' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EO%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/styles.css?v=5" />
 </head>
 <body>
   <header class="site-header">
@@ -134,5 +134,8 @@
   <script src="js/store.js?v=2"></script>
   <!-- UI controller -->
   <script src="js/app.js?v=2"></script>
+  <!-- Presentation-only finishing layer (winning-line ink strike + dry-voice copy).
+       Reads rendered DOM only; touches no game logic, storage, or existing hooks. -->
+  <script src="js/flourish.js?v=2"></script>
 </body>
 </html>
