@@ -1,0 +1,11 @@
+{
+  "name": "tictac-webapp",
+  "version": "1.0.0",
+  "description": "Static web port of the tictac learning platform (vs AI, two-player, puzzles, lessons, gym). No build step, no dependencies.",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/test.js",
+    "verify-puzzles": "node scripts/verify-puzzles.js",
+    "verify-lessons": "node scripts/verify-lessons.js"
+  }
+}

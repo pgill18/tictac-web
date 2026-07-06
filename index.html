@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>tictac — learn and play tic-tac-toe</title>
+  <!-- Inline SVG favicon (data URI) — no separate file, avoids the favicon.ico 404 on file:// and any static host. -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232d6cdf'/%3E%3Cg stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='11.5' y1='2' x2='11.5' y2='30'/%3E%3Cline x1='20.5' y1='2' x2='20.5' y2='30'/%3E%3Cline x1='2' y1='11.5' x2='30' y2='11.5'/%3E%3Cline x1='2' y1='20.5' x2='30' y2='20.5'/%3E%3C/g%3E%3Ctext x='6.5' y='9.5' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EX%3C/text%3E%3Ctext x='23' y='28' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EO%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <h1>tictac</h1>
+    <p class="tagline">Learn and play tic-tac-toe — vs AI, two-player, puzzles &amp; lessons.</p>
+    <div id="user-bar" class="user-bar">
+      <span class="user-label">Playing as:</span>
+      <strong id="current-user">— nobody yet —</strong>
+      <select id="user-select" aria-label="Switch user"></select>
+      <input id="user-input" type="text" placeholder="new name" maxlength="24" aria-label="New user name" />
+      <button id="user-set" type="button">Play as this name</button>
+    </div>
+  </header>
+
+  <nav class="modes" id="mode-nav">
+    <button type="button" data-mode="ai" class="active">Play AI</button>
+    <button type="button" data-mode="twoplayer">Two-Player</button>
+    <button type="button" data-mode="puzzles">Puzzles</button>
+    <button type="button" data-mode="lessons">Lessons</button>
+    <button type="button" data-mode="gym">Gym</button>
+  </nav>
+
+  <main>
+    <!-- ================= AI ================= -->
+    <section id="mode-ai" class="mode">
+      <h2>Play against the AI</h2>
+      <p class="muted">You are <strong>X</strong> and move first. Pick a difficulty and start a game.
+        <em>hard</em> is provably unbeatable — it only ever draws or wins.</p>
+      <div class="controls">
+        <label>Difficulty:
+          <select id="ai-difficulty">
+            <option value="easy">easy — random</option>
+            <option value="medium">medium — win/block heuristic</option>
+            <option value="hard" selected>hard — unbeatable</option>
+          </select>
+        </label>
+        <button id="ai-new" type="button">New game</button>
+      </div>
+      <div id="ai-board" class="board" aria-label="AI game board"></div>
+      <p id="ai-status" class="status"></p>
+    </section>
+
+    <!-- ================= TWO-PLAYER ================= -->
+    <section id="mode-twoplayer" class="mode hidden">
+      <h2>Two-player</h2>
+      <div class="subtabs">
+        <button type="button" data-sub="hotseat" class="active">Hot-seat (one device)</button>
+        <button type="button" data-sub="code">Match code (async / two devices)</button>
+      </div>
+
+      <div id="sub-hotseat" class="subpanel">
+        <p class="muted">Pass the device back and forth. <strong>X</strong> goes first, then <strong>O</strong>, alternating.</p>
+        <button id="hs-new" type="button">New hot-seat game</button>
+        <div id="hs-board" class="board"></div>
+        <p id="hs-status" class="status"></p>
+        <p class="fineprint">Hot-seat is local practice — it does not affect your ranked match record in the Gym.</p>
+      </div>
+
+      <div id="sub-code" class="subpanel hidden">
+        <p class="muted">Play a friend with no server: make a move, copy the <strong>match code</strong>, and send it to
+          your opponent (chat, email, anywhere). They paste it, move, and send a new code back.</p>
+        <div class="controls">
+          <button id="mc-new" type="button">Start new match (you are X)</button>
+        </div>
+        <div class="controls">
+          <textarea id="mc-input" rows="2" placeholder="Paste a match code you received, then press Load"></textarea>
+          <button id="mc-load" type="button">Load code</button>
+        </div>
+        <div id="mc-board" class="board"></div>
+        <p id="mc-status" class="status"></p>
+        <div id="mc-share" class="share hidden">
+          <label for="mc-output">Send this code to your opponent:</label>
+          <textarea id="mc-output" rows="2" readonly></textarea>
+          <button id="mc-copy" type="button">Copy code</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= PUZZLES ================= -->
+    <section id="mode-puzzles" class="mode hidden">
+      <h2>Puzzles</h2>
+      <p class="muted">Instant feedback. 14 puzzles across 4 categories.</p>
+      <div id="puzzle-cats" class="chips"></div>
+      <div class="puzzle-layout">
+        <ul id="puzzle-list" class="list"></ul>
+        <div id="puzzle-detail" class="detail">
+          <p class="muted">Pick a puzzle from the list.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= LESSONS ================= -->
+    <section id="mode-lessons" class="mode hidden">
+      <h2>Lessons</h2>
+      <p class="muted">Step-by-step teaching for beginners. Your progress is saved automatically.</p>
+      <div class="puzzle-layout">
+        <ul id="lesson-list" class="list"></ul>
+        <div id="lesson-detail" class="detail">
+          <p class="muted">Pick a lesson from the list.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= GYM ================= -->
+    <section id="mode-gym" class="mode hidden">
+      <h2>Gym — your progress</h2>
+      <button id="gym-refresh" type="button">Refresh</button>
+      <div id="gym-report" class="gym"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>No accounts, no server. Everything is stored in this browser. See <code>README.md</code> to run or host it.</p>
+  </footer>
+
+  <!-- Ported logic (classic scripts → globals; also Node-require-able for the proofs) -->
+  <!-- ?v= is a cache-buster: bump it whenever any js/*.js changes so browsers/static
+       hosts can't serve a stale mix of old+new files (that masked the #15 store fix). -->
+  <script src="js/board.js?v=2"></script>
+  <script src="js/ai.js?v=2"></script>
+  <script src="js/puzzles.js?v=2"></script>
+  <script src="js/lessons.js?v=2"></script>
+  <script src="js/matchcode.js?v=2"></script>
+  <script src="js/gym.js?v=2"></script>
+  <script src="js/store.js?v=2"></script>
+  <!-- UI controller -->
+  <script src="js/app.js?v=2"></script>
+</body>
+</html>
