@@ -14,7 +14,7 @@
   const LINES = board.LINES;
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const INK = { X: '#6338d6', O: '#e08a00' }; // grape / marigold — matches styles.css
+  const INK = { X: '#7a33bd', O: '#cf7d18' }; // warm grape / brass — matches styles.css (fallback only; strike reads computed color)
 
   function markOf(cell) {
     if (cell.classList.contains('mark-X')) return 'X';

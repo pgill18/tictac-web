@@ -7,17 +7,20 @@
    ========================================================================== */
 
 :root {
-  --paper:    #f3f0fb;   /* cool lilac-tinted page                    */
-  --card:     #fbfaff;   /* raised paper                              */
-  --ink:      #241d3d;   /* near-black ink-violet — body + grid       */
-  --grape:    #6338d6;   /* X + primary/interactive                   */
-  --grape-dk: #4f2ab5;   /* pressed / strong grape                    */
-  --marigold: #e08a00;   /* O — warm counterweight (AA on paper)      */
-  --mint:     #0f8f68;   /* success / correct / win                   */
-  --rose:     #d5325a;   /* error / not-quite / loss                  */
-  --line:     #ddd4f2;   /* soft rule + hard printed shadow           */
-  --muted:    #6a6392;   /* secondary ink                             */
-  --ghost:    #b1a8d4;   /* empty-cell position numbers               */
+  /* Warm "Worksheet" — a temperature shift of the original cool-lilac tokens
+     toward boxwood/walnut/brass/claret. Same roles, same grape/marigold rivalry,
+     just warmer; contrast held at or above the prior palette in every state. */
+  --paper:    #f4efe6;   /* warm boxwood-ivory page                   */
+  --card:     #fdfbf5;   /* raised warm paper                         */
+  --ink:      #2b2219;   /* walnut near-black — body + grid           */
+  --grape:    #7a33bd;   /* X + primary/interactive (warmed mulberry) */
+  --grape-dk: #5f2597;   /* pressed / strong grape                    */
+  --marigold: #cf7d18;   /* O — warm brass counterweight              */
+  --mint:     #167a54;   /* success / correct / win (deep warm green) */
+  --rose:     #bb2f49;   /* error / not-quite / loss (claret)         */
+  --line:     #e6ddcf;   /* soft warm rule + hard printed shadow      */
+  --muted:    #756b5c;   /* secondary ink (warm taupe)                */
+  --ghost:    #c3b7a5;   /* empty-cell position numbers (warm)        */
 
   --font-display: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -65,7 +68,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 800; margin: 0 0 .35
 .site-header h1::before {
   content: ""; width: 1.15em; height: 1.15em; flex: none;
   background: no-repeat center / contain
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%236338d6' stroke-width='9' stroke-linecap='round'%3E%3Cline x1='38' y1='10' x2='34' y2='90'/%3E%3Cline x1='66' y1='10' x2='62' y2='90'/%3E%3Cline x1='12' y1='36' x2='90' y2='40'/%3E%3Cline x1='10' y1='64' x2='88' y2='68'/%3E%3C/g%3E%3C/svg%3E");
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%237a33bd' stroke-width='9' stroke-linecap='round'%3E%3Cline x1='38' y1='10' x2='34' y2='90'/%3E%3Cline x1='66' y1='10' x2='62' y2='90'/%3E%3Cline x1='12' y1='36' x2='90' y2='40'/%3E%3Cline x1='10' y1='64' x2='88' y2='68'/%3E%3C/g%3E%3C/svg%3E");
 }
 .tagline { margin: .5em 0 16px; color: var(--muted); max-width: 46ch; }
 
@@ -105,7 +108,7 @@ button.primary:hover, #user-set:hover { background: var(--grape-dk); border-colo
   border-radius: 12px 12px 0 0; padding: 9px 16px; color: var(--muted);
   position: relative; top: 2px;
 }
-.modes button:hover { color: var(--ink); background: rgba(99,56,214,.06); }
+.modes button:hover { color: var(--ink); background: rgba(122,51,189,.06); }
 .modes button.active {
   background: var(--card); color: var(--grape);
   border-color: var(--line); border-bottom: 2px solid var(--card);
@@ -131,17 +134,17 @@ label { display: inline-flex; gap: 8px; align-items: center; }
   gap: 0; width: max-content; margin: 20px 0 14px; padding: 8px;
   /* board-theme tokens (overridden by body[data-board-theme]); defaults == the
      original "Ink" look so an untouched board is pixel-identical. */
-  --grid-ink: #4a3d7a; --board-x: var(--grape); --board-o: var(--marigold);
+  --grid-ink: #4a3d2e; --board-x: var(--grape); --board-o: var(--marigold);
   --board-ghost: var(--ghost); --board-paper: transparent;
   background: var(--board-paper); border-radius: 18px;
 }
 .board.empty { display: none; }
 /* the inked # — round-capped, slightly wobbly strokes, drawn over the cells.
    Painted as a MASK so the ink color follows --grid-ink (themeable per board theme);
-   the default #4a3d7a keeps the original look identical. */
+   the default #4a3d2e keeps the original look identical. */
 .board::after {
   content: ""; position: absolute; inset: 8px; pointer-events: none; z-index: 2;
-  background-color: var(--grid-ink, #4a3d7a);
+  background-color: var(--grid-ink, #4a3d2e);
   -webkit-mask: no-repeat center / 100% 100%
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23000' stroke-width='7' stroke-linecap='round'%3E%3Cline x1='101' y1='14' x2='99' y2='286'/%3E%3Cline x1='201' y1='14' x2='199' y2='286'/%3E%3Cline x1='14' y1='99' x2='286' y2='101'/%3E%3Cline x1='14' y1='199' x2='286' y2='201'/%3E%3C/g%3E%3C/svg%3E");
   mask: no-repeat center / 100% 100%
@@ -157,7 +160,7 @@ label { display: inline-flex; gap: 8px; align-items: center; }
 }
 .cell.empty { color: var(--board-ghost, var(--ghost)); font-family: var(--font-mono); font-size: 1rem; font-weight: 500; }
 .cell.playable { cursor: pointer; }
-.cell.playable:hover, .cell.playable:focus-visible { background: color-mix(in srgb, var(--grid-ink, #4a3d7a) 14%, transparent); }
+.cell.playable:hover, .cell.playable:focus-visible { background: color-mix(in srgb, var(--grid-ink, #4a3d2e) 14%, transparent); }
 .cell.mark-X { color: var(--board-x, var(--grape)); }
 .cell.mark-O { color: var(--board-o, var(--marigold)); }
 .cell.disabled { cursor: default; }
@@ -198,8 +201,8 @@ label { display: inline-flex; gap: 8px; align-items: center; }
 }
 .list li { padding: 12px 14px; border-bottom: 1.5px solid var(--line); cursor: pointer; transition: background-color .1s ease; }
 .list li:last-child { border-bottom: none; }
-.list li:hover { background: rgba(99,56,214,.06); }
-.list li.selected { background: rgba(99,56,214,.09); box-shadow: inset 4px 0 0 var(--grape); }
+.list li:hover { background: rgba(122,51,189,.06); }
+.list li.selected { background: rgba(122,51,189,.09); box-shadow: inset 4px 0 0 var(--grape); }
 .list li > div:first-child { font-family: var(--font-display); font-weight: 700; }
 .list .sub { color: var(--muted); font-size: .82rem; font-family: var(--font-mono); }
 
@@ -209,7 +212,7 @@ label { display: inline-flex; gap: 8px; align-items: center; }
   border: 1.5px solid var(--line); margin-left: 8px; vertical-align: 1px;
 }
 .badge.mastered { color: var(--mint); border-color: var(--mint); background: rgba(15,143,104,.08); }
-.badge.progress { color: var(--grape); border-color: var(--grape); background: rgba(99,56,214,.08); }
+.badge.progress { color: var(--grape); border-color: var(--grape); background: rgba(122,51,189,.08); }
 
 .detail {
   background: var(--card); border: 1.5px solid var(--line);
@@ -223,7 +226,7 @@ label { display: inline-flex; gap: 8px; align-items: center; }
 .feedback.correct .tag { color: var(--mint); }
 .feedback.incorrect .tag { color: var(--rose); }
 
-.share { margin-top: 14px; padding: 14px; border: 1.5px dashed var(--grape); border-radius: 12px; background: rgba(99,56,214,.04); }
+.share { margin-top: 14px; padding: 14px; border: 1.5px dashed var(--grape); border-radius: 12px; background: rgba(122,51,189,.04); }
 .share label { display: block; margin-bottom: 8px; color: var(--muted); }
 
 /* ---------- gym ---------- */
@@ -368,7 +371,7 @@ label { display: inline-flex; gap: 8px; align-items: center; }
     linear-gradient(var(--sw-ink), var(--sw-ink)) 12% 65% / 76% 3px no-repeat,
     var(--sw-paper);
 }
-.gami-theme[data-board-theme="ink"]       { --sw-paper: #f3f0fb; --sw-ink: #4a3d7a; }
+.gami-theme[data-board-theme="ink"]       { --sw-paper: #f4efe6; --sw-ink: #4a3d2e; }
 .gami-theme[data-board-theme="graphite"]  { --sw-paper: #f6f6f2; --sw-ink: #5b5b66; }
 .gami-theme[data-board-theme="blueprint"] { --sw-paper: #103a61; --sw-ink: #8fd0ff; }
 .gami-theme[data-board-theme="chalk"]     { --sw-paper: #2f3540; --sw-ink: #ececf2; }
@@ -418,7 +421,7 @@ label { display: inline-flex; gap: 8px; align-items: center; }
 .leaderboard li:last-child { border-bottom: none; }
 .leaderboard li::before { content: counter(rank); font-family: var(--font-mono); font-size: .8rem; color: var(--muted); width: 1.5em; text-align: right; flex: none; }
 .leaderboard li:first-child::before { content: "★" / "1"; color: var(--marigold); }
-.leaderboard li[data-me="true"] { background: rgba(99,56,214,.09); box-shadow: inset 3px 0 0 var(--grape); border-radius: 6px; }
+.leaderboard li[data-me="true"] { background: rgba(122,51,189,.09); box-shadow: inset 3px 0 0 var(--grape); border-radius: 6px; }
 .lb-name { flex: 1; font-family: var(--font-display); font-weight: 700; }
 .lb-lvl { font-family: var(--font-mono); font-size: .82rem; color: var(--grape); }
 .lb-xp { font-family: var(--font-mono); font-size: .82rem; color: var(--muted); }
