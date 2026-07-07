@@ -231,6 +231,79 @@ label { display: inline-flex; gap: 8px; align-items: center; }
 .gym .level { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; color: var(--grape); }
 .gym .meter { height: 12px; background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; margin: 10px 0; }
 .gym .meter > span { display: block; height: 100%; background: linear-gradient(90deg, var(--grape), var(--marigold)); }
+/* character practice stats: give each opponent row its accent dot in the gym too */
+.gym td.k { position: relative; }
+
+/* ============================================================================
+   PHASE 4 — CHARACTERS & TOURNAMENT (extends the Worksheet system)
+   The board keeps X=grape / O=marigold for every opponent; a character's colour
+   lives here, on its avatar token, persona card, and standings row — never on
+   the mark. Accent + emblem + pips are keyed off [data-character] (set by the JS
+   on the mode section and on each standings row), so pure CSS does the theming.
+   ========================================================================== */
+[data-character="scribble"] { --char: #b06a00; --char-soft: #fbeccc; --emblem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%23fbeccc' stroke='%23e08a00' stroke-width='2.5'/%3E%3Cpath d='M19 40 q1 -14 13 -12 q9 2 5 11 q-4 8 -12 3 q-6 -4 3 -9' fill='none' stroke='%23c47a00' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); --pips: "\25CF\25CB\25CB\25CB"; }
+[data-character="brick"]    { --char: #12706b; --char-soft: #d3e9e7; --emblem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%23d3e9e7' stroke='%231f7a75' stroke-width='2.5'/%3E%3Cpath d='M32 18 l13 4 v9 q0 13 -13 17 q-13 -4 -13 -17 v-9 z' fill='none' stroke='%231f7a75' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M20 33 h24' stroke='%231f7a75' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"); --pips: "\25CF\25CF\25CB\25CB"; }
+[data-character="twist"]    { --char: #a5327a; --char-soft: #f2d7e8; --emblem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%23f2d7e8' stroke='%23b23f86' stroke-width='2.5'/%3E%3Cpath d='M24 20 v10 M40 20 v10 M23 30 h18 M32 30 v16' fill='none' stroke='%23b23f86' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); --pips: "\25CF\25CF\25CF\25CB"; }
+[data-character="ace"]      { --char: #33296f; --char-soft: #d9d6ea; --emblem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%23d9d6ea' stroke='%2333296f' stroke-width='2.5'/%3E%3Cpath d='M18 43 v-15 l7 6 l7 -12 l7 12 l7 -6 v15 z' fill='%2333296f' fill-opacity='.14' stroke='%2333296f' stroke-width='2.6' stroke-linejoin='round'/%3E%3Ccircle cx='32' cy='24' r='2.4' fill='%2333296f'/%3E%3C/svg%3E"); --pips: "\25CF\25CF\25CF\25CF"; }
+
+/* persona card — the opponent's nameplate */
+.persona { margin: 14px 0 4px; }
+.persona-card {
+  display: grid; grid-template-columns: 72px 1fr; column-gap: 16px; row-gap: 2px; align-items: start;
+  background: var(--card); border: 1.5px solid var(--line); border-left: 5px solid var(--char, var(--line));
+  border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); max-width: 560px;
+  animation: personaIn .24s ease both;
+}
+@keyframes personaIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+/* avatar token — dana's empty .persona-avatar span, painted with the emblem */
+.persona-avatar {
+  grid-column: 1; grid-row: 1 / 5; width: 72px; height: 72px; align-self: start;
+  background: var(--emblem) center / contain no-repeat;
+}
+.persona-name { grid-column: 2; font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; color: var(--char, var(--ink)); line-height: 1.1; }
+/* archetype tag as a quiet byline after the name — de-formalized to plain
+   sentence-tone text (dana's human label, no parens/slug), which reads as a
+   subtitle rather than an enum. Kept per taste review. */
+.persona-arch { font-family: var(--font-body); font-weight: 600; font-size: .82rem; color: var(--muted); }
+.persona-blurb { grid-column: 2; color: var(--ink); margin-top: 8px; max-width: 46ch; }
+/* difficulty pips: filled/outline dots in the character's accent — encodes the true 1–4
+   order. Alt-text "/ ''" keeps the glyphs visual-only so they never reach the a11y tree. */
+.persona-pips { grid-column: 2; display: block; margin-top: 10px; }
+.persona-pips::after { content: var(--pips, "") / ""; color: var(--char); font-size: .82rem; letter-spacing: 5px; }
+.persona-voice {
+  grid-column: 2; margin-top: 10px; padding: 8px 12px; border-radius: 10px;
+  background: color-mix(in srgb, var(--char) 9%, transparent);
+  border-left: 3px solid var(--char); color: var(--char); font-style: italic;
+}
+
+/* tournament standings — a worksheet scoresheet */
+.tour-standings { margin: 14px 0 6px; }
+.tour-table {
+  width: 100%; max-width: 460px; border-collapse: collapse;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden; font-variant-numeric: tabular-nums;
+}
+.tour-table th {
+  text-align: left; font-family: var(--font-body); font-size: .72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em; color: var(--muted);
+  padding: 10px 14px; border-bottom: 1.5px solid var(--line);
+}
+.tour-table td { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.tour-table tbody tr[data-character] td:first-child {
+  font-family: var(--font-display); font-weight: 700;
+}
+.tour-table tbody tr[data-character] td:first-child::before {
+  content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--char); margin-right: 9px; vertical-align: -1px;
+}
+.tour-table td:last-child { font-family: var(--font-mono); font-size: .9rem; }
+.tour-table td.win  { color: var(--mint); font-weight: 700; }
+.tour-table td.lose { color: var(--rose); font-weight: 700; }
+.tour-table tfoot td {
+  border-bottom: none; border-top: 2px solid var(--line);
+  font-family: var(--font-display); font-weight: 800; background: var(--paper);
+}
+.tour-table tfoot td:last-child { color: var(--grape); }
 
 /* ---------- footer ---------- */
 .site-footer {

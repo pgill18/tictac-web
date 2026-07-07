@@ -6,6 +6,22 @@
 //     puzzleAttempts: { name: [ {id,category,correct,pos,ts} ] },
 //     lessons: { name: { lessonId: { step, completed } } } }
 // Browser global `window.TTStore`.
+//
+// CONCURRENCY (task #9). The webapp's concurrency profile is much milder than the
+// CLI's file store, so it needs no lock:
+//   - localStorage.setItem writes the whole blob in one synchronous call — it is
+//     atomic, so a reader never sees a torn/half-written value (the CLI needed
+//     temp+rename to get this; localStorage gives it for free).
+//   - Within a tab, JS is single-threaded and load()->mutate->save() runs as one
+//     uninterrupted synchronous task (no await between), so a tab can't race
+//     itself. app.js also reload()s immediately before every persist(), so each
+//     write is built on the freshest state — the tightest possible window.
+//   - The only residual race is two TABS/devices writing under different users
+//     at the same instant (last-writer-wins on the shared key). That's inherent
+//     to localStorage and low-impact here: the product model is one player per
+//     browser/tab (the "who's playing?" switcher), not concurrent shared writers
+//     like the CLI's async matches. So we accept last-writer-wins rather than
+//     add cross-tab coordination that this toy store doesn't warrant.
 (function (root) {
   'use strict';
 
@@ -20,7 +36,11 @@
   }
 
   function emptyStore() {
-    return { currentUser: null, users: {}, puzzleAttempts: {}, lessons: {}, recordedMatches: {} };
+    return { currentUser: null, users: {}, puzzleAttempts: {}, lessons: {}, recordedMatches: {}, tournaments: {} };
+  }
+
+  function emptyTournamentStats() {
+    return { played: 0, win: 0, loss: 0, draw: 0, completed: 0 };
   }
 
   function load() {
@@ -49,7 +69,41 @@
     const u = store.users[name];
     if (!u.aiStats) u.aiStats = emptyAiStats();
     if (!u.matchStats) u.matchStats = { win: 0, loss: 0, draw: 0 };
+    if (!u.characterStats) u.characterStats = {}; // charId -> {win,loss,draw}
+    if (!u.tournamentStats) u.tournamentStats = emptyTournamentStats();
     return u;
+  }
+
+  // Record a practice game vs a character, from the user's (X) perspective.
+  function recordCharacterResult(store, user, characterId, status) {
+    const u = ensureUser(store, user);
+    if (!u.characterStats[characterId]) u.characterStats[characterId] = { win: 0, loss: 0, draw: 0 };
+    const bucket = u.characterStats[characterId];
+    if (status === 'x_win') bucket.win++;
+    else if (status === 'o_win') bucket.loss++;
+    else if (status === 'draw') bucket.draw++;
+  }
+
+  // Fold a completed tournament's standings into the user's tournamentStats.
+  function recordTournamentResult(store, user, s) {
+    const u = ensureUser(store, user);
+    u.tournamentStats.played += s.win + s.loss + s.draw;
+    u.tournamentStats.win += s.win;
+    u.tournamentStats.loss += s.loss;
+    u.tournamentStats.draw += s.draw;
+    u.tournamentStats.completed += 1;
+  }
+
+  // Persisted active-tournament state (so a run survives page reloads).
+  function getTournament(store, user) {
+    return (store.tournaments && store.tournaments[user]) || null;
+  }
+  function setTournament(store, user, t) {
+    if (!store.tournaments) store.tournaments = {};
+    store.tournaments[user] = t;
+  }
+  function clearTournament(store, user) {
+    if (store.tournaments) delete store.tournaments[user];
   }
 
   function userExists(store, name) {
@@ -109,5 +163,7 @@
   root.TTStore = {
     KEY, emptyStore, load, save, ensureUser, userExists, listUsers,
     recordAiResult, recordMatchResult, recordPuzzleAttempt, getLessonProgress,
+    recordCharacterResult, recordTournamentResult,
+    getTournament, setTournament, clearTournament, emptyTournamentStats,
   };
 })(typeof self !== 'undefined' ? self : this);

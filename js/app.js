@@ -9,6 +9,8 @@
   const lessonsMod = window.TTLessons;
   const gymMod = window.TTGym;
   const matchcode = window.TTMatchCode;
+  const characters = window.TTCharacters;
+  const tournamentMod = window.TTTournament;
   const store = window.TTStore;
 
   const $ = (id) => document.getElementById(id);
@@ -69,7 +71,14 @@
   });
 
   function rerenderActiveMode() {
+    // Never leave a persona card (name/blurb/decorative pips) sitting in an
+    // inactive section's DOM — it would surface as a stray node (e.g. the AI
+    // tab's default "●○○○" pips appearing before the Tournament heading). Clear
+    // the persona of every non-active mode; the active mode repopulates its own.
+    if (activeMode !== 'ai') $('ai-persona').innerHTML = '';
+    if (activeMode !== 'tournament') $('tour-persona').innerHTML = '';
     if (activeMode === 'ai') { if (!aiGame && currentUser) newAiGame(); else renderAi(); }
+    else if (activeMode === 'tournament') { tour = null; tourGame = null; renderTour(); }
     else if (activeMode === 'puzzles') renderPuzzleList();
     else if (activeMode === 'lessons') renderLessonList();
     else if (activeMode === 'gym') renderGym();
@@ -107,13 +116,53 @@
   }
 
   // =======================================================================
-  // AI MODE
+  // AI MODE — play a chosen character (Phase 4)
   // =======================================================================
-  let aiGame = null; // { board, difficulty, status }
+  let aiGame = null; // { board, characterId, status }
+
+  // Populate the character dropdown once.
+  function fillCharacterSelect(sel) {
+    // Just the name — the persona card carries the archetype/identity. (Full
+    // "Name — archetype" wrapped/truncated in the native select on small screens.)
+    sel.innerHTML = characters.CHARACTERS
+      .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
+      .join('');
+  }
+
+  // Persona card: name, blurb, and a contextual voice line (placeholder markup —
+  // iris owns the final look; this is a working skeleton she can design against).
+  function personaHtml(charId, voiceKey) {
+    const c = characters.byId(charId);
+    if (!c) return '';
+    const line = c.voices[voiceKey || 'intro'];
+    // .persona-avatar and .persona-pips are empty hooks iris paints via CSS;
+    // .persona-arch shows the human-readable archetype label (not the raw slug).
+    return `<div class="persona-card" data-character="${charSlug(charId)}">
+      <span class="persona-avatar" aria-hidden="true"></span>
+      <div class="persona-name">${escapeHtml(c.name)} <span class="persona-arch">${escapeHtml(c.archetypeLabel)}</span></div>
+      <div class="persona-blurb">${escapeHtml(c.blurb)}</div>
+      <span class="persona-pips" aria-hidden="true"></span>
+      <div class="persona-voice">“${escapeHtml(line)}”</div>
+    </div>`;
+  }
+
+  // Stable per-character slug (scribble|brick|twist|ace) for iris's accent
+  // theming — set as data-character on the active board section / standings rows.
+  function charSlug(id) {
+    const c = characters.byId(id);
+    return c ? c.name.toLowerCase() : '';
+  }
+
+  function voiceKeyForStatus(st) {
+    if (st === 'x_win') return 'loss';   // the character lost
+    if (st === 'o_win') return 'win';    // the character won
+    if (st === 'draw') return 'draw';
+    return 'taunt';                      // mid-game
+  }
 
   function newAiGame() {
     if (!requireUser($('ai-status'))) return;
-    aiGame = { board: board.emptyBoard(), difficulty: $('ai-difficulty').value, status: 'in_progress' };
+    aiGame = { board: board.emptyBoard(), characterId: $('ai-character').value, status: 'in_progress' };
     renderAi();
   }
 
@@ -122,33 +171,153 @@
     aiGame.board[i] = 'X';
     aiGame.status = board.status(aiGame.board);
     if (aiGame.status === 'in_progress') {
-      const aiIdx = ai.chooseMove(aiGame.board, 'O', aiGame.difficulty);
+      const aiIdx = characters.moveFor(aiGame.characterId, aiGame.board, 'O');
       aiGame.board[aiIdx] = 'O';
       aiGame.status = board.status(aiGame.board);
     }
     if (aiGame.status !== 'in_progress') {
       reload();
-      store.recordAiResult(s, currentUser, aiGame.difficulty, aiGame.status);
+      store.recordCharacterResult(s, currentUser, aiGame.characterId, aiGame.status);
       persist();
     }
     renderAi();
   }
 
   function renderAi() {
-    if (!aiGame) { $('ai-board').classList.add('empty'); $('ai-status').textContent = ''; return; }
+    if (!aiGame) {
+      $('ai-board').classList.add('empty');
+      $('ai-status').textContent = '';
+      $('mode-ai').setAttribute('data-character', currentUser ? charSlug($('ai-character').value) : '');
+      $('ai-persona').innerHTML = currentUser ? personaHtml($('ai-character').value, 'intro') : '';
+      return;
+    }
+    $('mode-ai').setAttribute('data-character', charSlug(aiGame.characterId));
     const live = aiGame.status === 'in_progress';
+    $('ai-persona').innerHTML = personaHtml(aiGame.characterId, live ? 'intro' : voiceKeyForStatus(aiGame.status));
     renderBoard($('ai-board'), aiGame.board, { interactive: true, onCell: live ? aiPlay : null });
-    $('ai-status').innerHTML = aiStatusText(aiGame.status);
+    $('ai-status').innerHTML = aiStatusText(aiGame.status, aiGame.characterId);
   }
 
-  function aiStatusText(st) {
+  function aiStatusText(st, charId) {
+    const name = charId ? escapeHtml(characters.byId(charId).name) : 'The AI';
     if (st === 'x_win') return '<span class="win">You win! 🎉</span>';
-    if (st === 'o_win') return `<span class="lose">The ${escapeHtml(aiGame.difficulty)} AI wins.</span>`;
+    if (st === 'o_win') return `<span class="lose">${name} wins.</span>`;
     if (st === 'draw') return 'Draw.';
     return 'Your move (<span class="turn-x">X</span>).';
   }
 
   $('ai-new').addEventListener('click', newAiGame);
+  $('ai-character').addEventListener('change', () => {
+    // Preview the newly-selected persona when no game is in flight.
+    if (!aiGame || aiGame.status !== 'in_progress') {
+      $('mode-ai').setAttribute('data-character', currentUser ? charSlug($('ai-character').value) : '');
+      $('ai-persona').innerHTML = currentUser ? personaHtml($('ai-character').value, 'intro') : '';
+    }
+  });
+
+  // =======================================================================
+  // TOURNAMENT MODE — round-robin gauntlet vs the whole cast (Phase 4)
+  // =======================================================================
+  let tour = null;      // persisted { cast, results }
+  let tourGame = null;  // active game { board, characterId, status } or null
+
+  function loadTour() {
+    reload();
+    tour = store.getTournament(s, currentUser);
+  }
+
+  function newTour() {
+    if (!requireUser($('tour-status'))) return;
+    tour = tournamentMod.newTournament();
+    tour.board = null; // no in-flight game yet
+    tourGame = null;
+    reload();
+    store.setTournament(s, currentUser, tour);
+    persist();
+    renderTour();
+  }
+
+  function tourPlay(i) {
+    if (!tourGame || tourGame.status !== 'in_progress') return;
+    tourGame.board[i] = 'X';
+    tourGame.status = board.status(tourGame.board);
+    if (tourGame.status === 'in_progress') {
+      const aiIdx = characters.moveFor(tourGame.characterId, tourGame.board, 'O');
+      tourGame.board[aiIdx] = 'O';
+      tourGame.status = board.status(tourGame.board);
+    }
+    reload(); // fresh store, then a single persist() commits everything below
+    if (tourGame.status === 'in_progress') {
+      // Persist the in-flight board so the game survives a tab switch / reload —
+      // it belongs to nextOpponent(tour), which renderTour resumes from.
+      tour.board = tourGame.board.slice();
+      store.setTournament(s, currentUser, tour);
+      persist();
+    } else {
+      const outcome = tournamentMod.outcomeFromStatus(tourGame.status, 'X');
+      tournamentMod.recordOutcome(tour, tourGame.characterId, outcome);
+      tour.board = null; // game finished — no in-flight board to resume
+      store.recordCharacterResult(s, currentUser, tourGame.characterId, tourGame.status);
+      store.setTournament(s, currentUser, tour);
+      // On completion, fold the run into the gym once.
+      if (tournamentMod.isComplete(tour)) {
+        store.recordTournamentResult(s, currentUser, tournamentMod.standings(tour));
+      }
+      persist();
+    }
+    renderTour();
+  }
+
+  function renderTour() {
+    if (!currentUser) { $('tour-standings').innerHTML = ''; $('tour-board').classList.add('empty'); $('tour-status').innerHTML = ''; $('tour-persona').innerHTML = '<p class="muted">Enter a name up top to play.</p>'; return; }
+    if (!tour) loadTour();
+    if (!tour) {
+      $('tour-standings').innerHTML = '<p class="muted">No tournament yet — press “Start tournament”.</p>';
+      $('tour-board').classList.add('empty'); $('tour-status').innerHTML = ''; $('tour-persona').innerHTML = '';
+      return;
+    }
+    const s2 = tournamentMod.standings(tour);
+    $('tour-standings').innerHTML = standingsHtml(s2);
+
+    const nextId = tournamentMod.nextOpponent(tour);
+    if (!nextId) {
+      // Complete.
+      tourGame = null;
+      $('tour-persona').innerHTML = '';
+      $('tour-board').classList.add('empty');
+      $('tour-status').innerHTML = `<span class="win">Tournament complete — ${escapeHtml(s2.placement)}</span> (${s2.points}/${s2.maxPoints} pts). Press “Start / restart” to play again.`;
+      return;
+    }
+    // Resume the in-flight game vs the next opponent. If a board was persisted
+    // (mid-game, survived a tab switch/reload), continue from it; else start fresh.
+    if (!tourGame || tourGame.characterId !== nextId) {
+      const savedBoard = tour.board && tour.board.length === 9 ? tour.board.slice() : board.emptyBoard();
+      tourGame = { board: savedBoard, characterId: nextId, status: board.status(savedBoard) };
+    }
+    const live = tourGame.status === 'in_progress';
+    $('mode-tournament').setAttribute('data-character', charSlug(nextId));
+    $('tour-persona').innerHTML = personaHtml(nextId, live ? 'intro' : voiceKeyForStatus(tourGame.status));
+    renderBoard($('tour-board'), tourGame.board, { interactive: true, onCell: live ? tourPlay : null });
+    const c = characters.byId(nextId);
+    $('tour-status').innerHTML = live
+      ? `Now facing <strong>${escapeHtml(c.name)}</strong> — your move (<span class="turn-x">X</span>).`
+      : `${aiStatusText(tourGame.status, nextId)} — advancing…`;
+    // If the game just finished, auto-advance the board to the next opponent on next render tick.
+    if (!live) { tourGame = null; setTimeout(renderTour, 900); }
+  }
+
+  function standingsHtml(s2) {
+    const rows = s2.rows.map((r) => {
+      const c = characters.byId(r.id);
+      const res = r.outcome ? r.outcome.toUpperCase() : '—';
+      const cls = r.outcome === 'win' ? 'win' : r.outcome === 'loss' ? 'lose' : '';
+      return `<tr data-character="${charSlug(r.id)}"><td>${escapeHtml(c.name)}</td><td class="${cls}">${res}</td></tr>`;
+    }).join('');
+    return `<table class="tour-table"><thead><tr><th>Opponent</th><th>Result</th></tr></thead><tbody>${rows}</tbody>
+      <tfoot><tr><td>Points</td><td>${s2.points}/${s2.maxPoints}</td></tr></tfoot></table>`;
+  }
+
+  $('tour-new').addEventListener('click', newTour);
 
   // =======================================================================
   // TWO-PLAYER: sub-tabs
@@ -483,6 +652,16 @@
         <p>${wld(g.matchStats)}</p>
       </div>
       <div class="card">
+        <h3>Characters (all games)</h3>
+        <table>
+          ${characters.CHARACTERS.map((c) => { const cs = g.characterStats[c.id] || { win: 0, loss: 0, draw: 0 }; return `<tr><td class="k">${escapeHtml(c.name)}</td><td>${wld(cs)}</td></tr>`; }).join('')}
+        </table>
+      </div>
+      <div class="card">
+        <h3>Tournaments</h3>
+        <p>${g.tournamentStats.completed} completed · ${g.tournamentStats.win}W / ${g.tournamentStats.loss}L / ${g.tournamentStats.draw}D across ${g.tournamentStats.played} games</p>
+      </div>
+      <div class="card">
         <h3>Puzzles</h3>
         <table>
           ${g.puzzleCats.map((c) => `<tr><td class="k">${escapeHtml(c.label)}</td><td>${c.solved}/${c.attempts} solved</td></tr>`).join('')}
@@ -500,6 +679,7 @@
 
   // ---------- init ----------
   refreshUserBar();
+  fillCharacterSelect($('ai-character'));
   renderPuzzleCats();
   newAiGame(); // starts a game if a user is set, else shows the prompt-for-user message
 })();

@@ -9,7 +9,9 @@ const ai = require('../js/ai');
 const puzzles = require('../js/puzzles');
 const lessons = require('../js/lessons');
 const matchcode = require('../js/matchcode');
-const { masteryLevel } = require('../js/gym');
+const characters = require('../js/characters');
+const tournament = require('../js/tournament');
+const { masteryLevel, computeGym } = require('../js/gym');
 
 let passed = 0;
 function ok(name, fn) {
@@ -204,7 +206,124 @@ console.log('store: match-code result recording is idempotent per (user, final b
     s = store.load();
     assert.deepStrictEqual(s.users.opp.matchStats, { win: 0, loss: 1, draw: 0 });
   });
+
+  ok('an in-flight tournament board survives save/reload (defect #49)', () => {
+    // The tab-switch data-loss bug was that the in-progress board was NOT part of
+    // the persisted tournament state. Persisting tour.board must round-trip so a
+    // reload (tab switch) can resume the exact position, not reset to empty.
+    let s = store.load();
+    store.ensureUser(s, 'tourist');
+    const t = tournament.newTournament();
+    t.board = ['X', null, null, null, 'O', null, null, null, null]; // mid-game vs scribble
+    store.setTournament(s, 'tourist', t);
+    store.save(s);
+    // Simulate a tab switch: fresh load from the same backing store.
+    s = store.load();
+    const resumed = store.getTournament(s, 'tourist');
+    assert.deepStrictEqual(resumed.board, ['X', null, null, null, 'O', null, null, null, null], 'in-flight board was lost on reload');
+    assert.strictEqual(tournament.nextOpponent(resumed), 'scribble', 'resumed run should still be on the first opponent');
+  });
 })();
+
+console.log('characters (Phase 4):');
+ok('exactly 4 characters, each with name/blurb/full voice set', () => {
+  assert.strictEqual(characters.CHARACTERS.length, 4);
+  const ids = characters.CHARACTERS.map((c) => c.id).sort();
+  assert.deepStrictEqual(ids, ['ace', 'brick', 'scribble', 'twist']);
+  for (const c of characters.CHARACTERS) {
+    assert.ok(c.name && c.blurb, `${c.id} missing name/blurb`);
+    for (const k of ['intro', 'taunt', 'win', 'loss', 'draw']) {
+      assert.ok(typeof c.voices[k] === 'string' && c.voices[k].length, `${c.id} missing voice.${k}`);
+    }
+  }
+});
+ok('blocker prioritizes blocking over its own immediate win', () => {
+  // O could win at 5, but X threatens to win at 2 — the blocker must block.
+  const b = ['X', 'X', null, 'O', 'O', null, null, null, null];
+  assert.strictEqual(characters.blockerMove(b, 'O'), 2);
+});
+ok('trickster creates a fork when one is constructible', () => {
+  // X at 0 and 4, O at 8: X can play a square that makes two threats at once.
+  const b = ['X', null, null, null, 'X', null, null, null, 'O'];
+  const move = characters.tricksterMove(b, 'X');
+  b[move] = 'X';
+  const threats = board.winningCells(b, 'X').length;
+  assert.ok(threats >= 2, `trickster move ${move} made only ${threats} threat(s)`);
+});
+ok('trickster still takes an immediate win over merely forking', () => {
+  const b = ['X', 'X', null, 'O', 'O', null, null, null, null]; // X wins at 2
+  assert.strictEqual(characters.tricksterMove(b, 'X'), 2);
+});
+
+console.log('Master character stays unbeatable UNDER its wrapper — exhaustive:');
+ok('moveFor("master") never loses across every human line', () => {
+  // Identical exhaustive proof to the hard-AI test, but routed through the
+  // character system (characters.moveFor) rather than ai.hardMove directly.
+  let terminals = 0;
+  function explore(b) {
+    const st = board.status(b);
+    if (st !== 'in_progress') {
+      assert.notStrictEqual(st, 'x_win', `human beat Master on ${JSON.stringify(b)}`);
+      terminals++;
+      return;
+    }
+    const filled = b.filter((c) => c !== null).length;
+    if (filled % 2 === 0) {
+      for (const i of board.legalMoves(b)) { const nb = b.slice(); nb[i] = 'X'; explore(nb); }
+    } else {
+      const nb = b.slice();
+      nb[characters.moveFor('ace', nb, 'O')] = 'O';
+      explore(nb);
+    }
+  }
+  explore(board.emptyBoard());
+  assert.ok(terminals > 0);
+  console.log(`      (explored ${terminals} terminal positions via moveFor, 0 losses)`);
+});
+
+console.log('tournament standings (Phase 4):');
+ok('round-robin gauntlet tallies points (win 3 / draw 1 / loss 0) + placement', () => {
+  let t = tournament.newTournament();
+  assert.strictEqual(tournament.nextOpponent(t), 'scribble');
+  assert.strictEqual(tournament.isComplete(t), false);
+  tournament.recordOutcome(t, 'scribble', 'win');
+  tournament.recordOutcome(t, 'brick', 'draw');
+  tournament.recordOutcome(t, 'twist', 'win');
+  tournament.recordOutcome(t, 'ace', 'loss');
+  const s = tournament.standings(t);
+  assert.strictEqual(s.points, 3 + 1 + 3 + 0);
+  assert.strictEqual(s.win, 2); assert.strictEqual(s.draw, 1); assert.strictEqual(s.loss, 1);
+  assert.strictEqual(s.complete, true);
+  assert.strictEqual(tournament.nextOpponent(t), null);
+  assert.ok(/Contender/.test(s.placement));
+});
+ok('sweeping the cast is Champion; outcome mapping respects the user mark', () => {
+  let t = tournament.newTournament();
+  for (const id of tournament.DEFAULT_CAST) tournament.recordOutcome(t, id, 'win');
+  assert.ok(/Champion/.test(tournament.standings(t).placement));
+  assert.strictEqual(tournament.outcomeFromStatus('x_win', 'X'), 'win');
+  assert.strictEqual(tournament.outcomeFromStatus('o_win', 'X'), 'loss');
+  assert.strictEqual(tournament.outcomeFromStatus('draw', 'X'), 'draw');
+  assert.throws(() => tournament.recordOutcome(t, 'nobody', 'win'));
+});
+
+console.log('gym: Ace practice/tournament credits the "unbeatable AI survived" point (defect #42):');
+ok('a draw vs Ace (characterStats.ace) sets hardNotLost even with no aiStats.hard game', () => {
+  const store = {
+    users: { u: { characterStats: { ace: { win: 0, loss: 0, draw: 1 } } } },
+    puzzleAttempts: {}, lessons: {},
+  };
+  const g = computeGym(store, 'u', puzzles, lessons);
+  assert.strictEqual(g.hardNotLost, true, 'a draw vs Ace should credit the point');
+  assert.ok(g.points >= 2, 'hardNotLost is worth 2 mastery points');
+});
+ok('losing every Ace game does NOT grant the point', () => {
+  const store = {
+    users: { u: { characterStats: { ace: { win: 0, loss: 3, draw: 0 } } } },
+    puzzleAttempts: {}, lessons: {},
+  };
+  assert.strictEqual(computeGym(store, 'u', puzzles, lessons).hardNotLost, false);
+});
 
 console.log('gym mastery formula:');
 ok('brand-new user is Beginner', () => {

@@ -6,7 +6,7 @@
   <title>tictac — learn and play tic-tac-toe</title>
   <!-- Inline SVG favicon (data URI) — no separate file, avoids the favicon.ico 404 on file:// and any static host. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%232d6cdf'/%3E%3Cg stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='11.5' y1='2' x2='11.5' y2='30'/%3E%3Cline x1='20.5' y1='2' x2='20.5' y2='30'/%3E%3Cline x1='2' y1='11.5' x2='30' y2='11.5'/%3E%3Cline x1='2' y1='20.5' x2='30' y2='20.5'/%3E%3C/g%3E%3Ctext x='6.5' y='9.5' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EX%3C/text%3E%3Ctext x='23' y='28' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EO%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="css/styles.css?v=5" />
+  <link rel="stylesheet" href="css/styles.css?v=9" />
 </head>
 <body>
   <header class="site-header">
@@ -23,6 +23,7 @@
 
   <nav class="modes" id="mode-nav">
     <button type="button" data-mode="ai" class="active">Play AI</button>
+    <button type="button" data-mode="tournament">Tournament</button>
     <button type="button" data-mode="twoplayer">Two-Player</button>
     <button type="button" data-mode="puzzles">Puzzles</button>
     <button type="button" data-mode="lessons">Lessons</button>
@@ -32,21 +33,33 @@
   <main>
     <!-- ================= AI ================= -->
     <section id="mode-ai" class="mode">
-      <h2>Play against the AI</h2>
-      <p class="muted">You are <strong>X</strong> and move first. Pick a difficulty and start a game.
-        <em>hard</em> is provably unbeatable — it only ever draws or wins.</p>
+      <h2>Play against a character</h2>
+      <p class="muted">You are <strong>X</strong> and move first. Pick an opponent and start a game.
+        <em>Ace</em> is provably unbeatable — the best you can do is a draw.</p>
       <div class="controls">
-        <label>Difficulty:
-          <select id="ai-difficulty">
-            <option value="easy">easy — random</option>
-            <option value="medium">medium — win/block heuristic</option>
-            <option value="hard" selected>hard — unbeatable</option>
-          </select>
+        <label>Opponent:
+          <select id="ai-character"></select>
         </label>
         <button id="ai-new" type="button">New game</button>
       </div>
+      <!-- Character persona card (placeholder styling — iris owns the visual identity). -->
+      <div id="ai-persona" class="persona"></div>
       <div id="ai-board" class="board" aria-label="AI game board"></div>
       <p id="ai-status" class="status"></p>
+    </section>
+
+    <!-- ================= TOURNAMENT ================= -->
+    <section id="mode-tournament" class="mode hidden">
+      <h2>Tournament — the gauntlet</h2>
+      <p class="muted">Play one game against every character in turn (you are <strong>X</strong>).
+        Earn points (win 3, draw 1) and see if you can sweep the whole cast. Your run is saved — you can leave and come back.</p>
+      <div class="controls">
+        <button id="tour-new" type="button">Start / restart tournament</button>
+      </div>
+      <div id="tour-standings" class="tour-standings"></div>
+      <div id="tour-persona" class="persona"></div>
+      <div id="tour-board" class="board" aria-label="Tournament game board"></div>
+      <p id="tour-status" class="status"></p>
     </section>
 
     <!-- ================= TWO-PLAYER ================= -->
@@ -127,13 +140,15 @@
        hosts can't serve a stale mix of old+new files (that masked the #15 store fix). -->
   <script src="js/board.js?v=2"></script>
   <script src="js/ai.js?v=2"></script>
+  <script src="js/characters.js?v=2"></script>
+  <script src="js/tournament.js?v=1"></script>
   <script src="js/puzzles.js?v=2"></script>
   <script src="js/lessons.js?v=2"></script>
   <script src="js/matchcode.js?v=2"></script>
-  <script src="js/gym.js?v=2"></script>
-  <script src="js/store.js?v=2"></script>
+  <script src="js/gym.js?v=4"></script>
+  <script src="js/store.js?v=3"></script>
   <!-- UI controller -->
-  <script src="js/app.js?v=2"></script>
+  <script src="js/app.js?v=8"></script>
   <!-- Presentation-only finishing layer (winning-line ink strike + dry-voice copy).
        Reads rendered DOM only; touches no game logic, storage, or existing hooks. -->
   <script src="js/flourish.js?v=2"></script>

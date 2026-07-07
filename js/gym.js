@@ -55,7 +55,12 @@
     const u = store.users && store.users[user]; // may be undefined for a new name
     const aiStats = (u && u.aiStats) || emptyAiStats();
     const matchStats = (u && u.matchStats) || { win: 0, loss: 0, draw: 0 };
-    const hardNotLost = aiStats.hard.win + aiStats.hard.draw > 0;
+    const characterStats = (u && u.characterStats) || {};
+    const tournamentStats = (u && u.tournamentStats) || { played: 0, win: 0, loss: 0, draw: 0, completed: 0 };
+    // "Survived the unbeatable AI" credit: a draw/win vs the hard tier OR vs Ace
+    // (the character system's identical minimax policy — practice or tournament).
+    const ace = characterStats.ace || { win: 0, loss: 0, draw: 0 };
+    const hardNotLost = aiStats.hard.win + aiStats.hard.draw + ace.win + ace.draw > 0;
 
     const attempts = (store.puzzleAttempts && store.puzzleAttempts[user]) || [];
     const cats = ['win1', 'win2', 'block', 'fork'];
@@ -85,6 +90,8 @@
       isNew: !u,
       aiStats,
       matchStats,
+      characterStats,
+      tournamentStats,
       hardNotLost,
       puzzleCats,
       totalSolved,
