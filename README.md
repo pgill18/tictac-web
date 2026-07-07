@@ -91,3 +91,22 @@ proofs from the CLI run against the same files the browser loads:
 - `npm run verify-lessons` — proves every lesson step's answer.
 
 Requires Node.js 18+ (only for the proofs — not to use the app).
+
+## Publish checks (run before every GitHub Pages publish)
+
+`npm run check-publish` runs both mechanical release gates and **must pass before
+publishing** (non-zero exit blocks the publish):
+
+- `npm run check-relative-paths` — fails if any `<script src>`/`<link href>`/`fetch()`
+  is site-root-relative (leading `/`) or escapes the app tree (`../`). The published
+  repo root **is** this `webapp/` folder and Pages serves it under a `/tictac-web/`
+  subpath, so such refs 404 in production.
+- `npm run check-cache-busters` — fails if any local `<script src>`/`<link href>`
+  lacks a `?v=N`, or if the `N`s in a page don't all match. On each release, bump
+  **every** asset in `index.html` to the same new `N` (this prevents a browser/host
+  from serving a stale mix of old+new files — the root cause of the #15A incident).
+- `npm run check-a11y-glyphs` — fails if a decorative glyph (★ ● ○ ◆ … used for
+  stars/pips/badges) is rendered in markup without a11y treatment, so a screen
+  reader doesn't read it out ("black star black star…"). Wrap decorative glyphs with
+  `decorativeGlyph(glyphs, label)` (in `js/app.js`) or put `aria-hidden` on the glyph
+  + `aria-label` on its container. Guards the recurring #43/#62/#65 leak class (#66).

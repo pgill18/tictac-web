@@ -129,13 +129,23 @@ label { display: inline-flex; gap: 8px; align-items: center; }
   grid-template-columns: repeat(3, 92px);
   grid-template-rows: repeat(3, 92px);
   gap: 0; width: max-content; margin: 20px 0 14px; padding: 8px;
+  /* board-theme tokens (overridden by body[data-board-theme]); defaults == the
+     original "Ink" look so an untouched board is pixel-identical. */
+  --grid-ink: #4a3d7a; --board-x: var(--grape); --board-o: var(--marigold);
+  --board-ghost: var(--ghost); --board-paper: transparent;
+  background: var(--board-paper); border-radius: 18px;
 }
 .board.empty { display: none; }
-/* the inked # — round-capped, slightly wobbly strokes, drawn over the cells */
+/* the inked # — round-capped, slightly wobbly strokes, drawn over the cells.
+   Painted as a MASK so the ink color follows --grid-ink (themeable per board theme);
+   the default #4a3d7a keeps the original look identical. */
 .board::after {
   content: ""; position: absolute; inset: 8px; pointer-events: none; z-index: 2;
-  background: no-repeat center / 100% 100%
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%234a3d7a' stroke-width='7' stroke-linecap='round'%3E%3Cline x1='101' y1='14' x2='99' y2='286'/%3E%3Cline x1='201' y1='14' x2='199' y2='286'/%3E%3Cline x1='14' y1='99' x2='286' y2='101'/%3E%3Cline x1='14' y1='199' x2='286' y2='201'/%3E%3C/g%3E%3C/svg%3E");
+  background-color: var(--grid-ink, #4a3d7a);
+  -webkit-mask: no-repeat center / 100% 100%
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23000' stroke-width='7' stroke-linecap='round'%3E%3Cline x1='101' y1='14' x2='99' y2='286'/%3E%3Cline x1='201' y1='14' x2='199' y2='286'/%3E%3Cline x1='14' y1='99' x2='286' y2='101'/%3E%3Cline x1='14' y1='199' x2='286' y2='201'/%3E%3C/g%3E%3C/svg%3E");
+  mask: no-repeat center / 100% 100%
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300' preserveAspectRatio='none'%3E%3Cg fill='none' stroke='%23000' stroke-width='7' stroke-linecap='round'%3E%3Cline x1='101' y1='14' x2='99' y2='286'/%3E%3Cline x1='201' y1='14' x2='199' y2='286'/%3E%3Cline x1='14' y1='99' x2='286' y2='101'/%3E%3Cline x1='14' y1='199' x2='286' y2='201'/%3E%3C/g%3E%3C/svg%3E");
 }
 .cell {
   position: relative; z-index: 1;
@@ -145,11 +155,11 @@ label { display: inline-flex; gap: 8px; align-items: center; }
   color: var(--ink); padding: 0; min-width: 0; line-height: 1;
   transition: background-color .12s ease;
 }
-.cell.empty { color: var(--ghost); font-family: var(--font-mono); font-size: 1rem; font-weight: 500; }
+.cell.empty { color: var(--board-ghost, var(--ghost)); font-family: var(--font-mono); font-size: 1rem; font-weight: 500; }
 .cell.playable { cursor: pointer; }
-.cell.playable:hover, .cell.playable:focus-visible { background: rgba(99,56,214,.12); }
-.cell.mark-X { color: var(--grape); }
-.cell.mark-O { color: var(--marigold); }
+.cell.playable:hover, .cell.playable:focus-visible { background: color-mix(in srgb, var(--grid-ink, #4a3d7a) 14%, transparent); }
+.cell.mark-X { color: var(--board-x, var(--grape)); }
+.cell.mark-O { color: var(--board-o, var(--marigold)); }
 .cell.disabled { cursor: default; }
 /* marks draw themselves onto the paper — the one orchestrated motion moment */
 .cell.mark-X, .cell.mark-O { animation: drawOn .26s cubic-bezier(.2,.9,.3,1.3) both; }
@@ -304,6 +314,151 @@ label { display: inline-flex; gap: 8px; align-items: center; }
   font-family: var(--font-display); font-weight: 800; background: var(--paper);
 }
 .tour-table tfoot td:last-child { color: var(--grape); }
+
+/* ============================================================================
+   PHASE 5 — SETTINGS + GAMIFICATION (extends the Worksheet system)
+   One reward vocabulary: an inked STAMP pressed on paper (earned = solid marigold,
+   locked = ghost outline). grape = interactive/progress, marigold = earned/merit.
+   All markup is dana's registry-generated output; this only dresses it.
+   ========================================================================== */
+#mode-settings h3 { font-size: 1.15rem; margin-top: 24px; }
+#mode-settings h3:first-of-type { margin-top: 8px; }
+
+/* module list — one row per registry module (icon-free, quiet; the toggle leads) */
+.gami-modules {
+  border: 1.5px solid var(--line); border-radius: var(--radius); background: var(--card);
+  box-shadow: var(--shadow); overflow: hidden; margin: 10px 0 4px;
+}
+.gami-module { display: flex; align-items: center; gap: 16px; padding: 14px 16px; border-bottom: 1.5px solid var(--line); }
+.gami-module:last-child { border-bottom: none; }
+.gami-module-text { flex: 1; min-width: 0; }
+.gami-module-name { font-family: var(--font-display); font-weight: 700; }
+.gami-module-desc { color: var(--muted); font-size: .88rem; margin-top: 2px; }
+
+/* the inked pill toggle */
+.gami-toggle { position: relative; flex: none; display: inline-flex; align-items: center; cursor: pointer; }
+.gami-toggle input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.gami-pill {
+  width: 48px; height: 27px; border-radius: 999px; background: var(--paper);
+  border: 1.5px solid var(--line); position: relative; transition: background-color .15s ease, border-color .15s ease;
+}
+.gami-pill::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 50%;
+  background: var(--card); box-shadow: 0 1px 2px rgba(36,29,61,.25); transition: transform .16s cubic-bezier(.3,.7,.4,1.3);
+}
+.gami-toggle input:checked + .gami-pill { background: var(--grape); border-color: var(--grape); }
+.gami-toggle input:checked + .gami-pill::after { transform: translateX(21px); }
+.gami-toggle input:focus-visible + .gami-pill { outline: 3px solid var(--grape); outline-offset: 2px; }
+
+/* board-theme picker — each button previews its own board look via a mini # swatch */
+.gami-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 10px 0 4px; }
+.gami-theme {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 12px;
+  border: 1.5px solid var(--line); border-radius: 12px; background: var(--card); cursor: pointer;
+  font: inherit; color: var(--ink); transition: border-color .12s ease, box-shadow .12s ease;
+}
+/* swatch = a SQUARE mini-board: same two-vertical / two-horizontal inset # lattice
+   as the real board, so the button previews the board shape, not a color bar. */
+.gami-theme::before {
+  content: ""; display: block; width: 68px; height: 68px; margin: 2px auto; border-radius: 10px; border: 1.5px solid var(--line);
+  background:
+    linear-gradient(var(--sw-ink), var(--sw-ink)) 35% 12% / 3px 76% no-repeat,
+    linear-gradient(var(--sw-ink), var(--sw-ink)) 65% 12% / 3px 76% no-repeat,
+    linear-gradient(var(--sw-ink), var(--sw-ink)) 12% 35% / 76% 3px no-repeat,
+    linear-gradient(var(--sw-ink), var(--sw-ink)) 12% 65% / 76% 3px no-repeat,
+    var(--sw-paper);
+}
+.gami-theme[data-board-theme="ink"]       { --sw-paper: #f3f0fb; --sw-ink: #4a3d7a; }
+.gami-theme[data-board-theme="graphite"]  { --sw-paper: #f6f6f2; --sw-ink: #5b5b66; }
+.gami-theme[data-board-theme="blueprint"] { --sw-paper: #103a61; --sw-ink: #8fd0ff; }
+.gami-theme[data-board-theme="chalk"]     { --sw-paper: #2f3540; --sw-ink: #ececf2; }
+.gami-theme:hover:not([data-locked="true"]) { border-color: var(--grape); }
+.gami-theme[data-selected="true"] { border-color: var(--grape); box-shadow: inset 0 0 0 1.5px var(--grape); }
+.gami-theme[data-locked="true"] { opacity: .55; cursor: not-allowed; }
+.gami-theme:focus-visible { outline: 3px solid var(--grape); outline-offset: 2px; }
+.gami-theme-name { font-family: var(--font-display); font-weight: 800; }
+.gami-theme-unlock { font-size: .78rem; color: var(--muted); }
+.gami-theme[data-selected="true"] .gami-theme-unlock { color: var(--grape); font-weight: 700; }
+
+/* reward panels */
+.gami-rewards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 10px; }
+.reward-block { background: var(--card); border: 1.5px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+.reward-block h4 { font-family: var(--font-display); font-weight: 800; font-size: 1rem; margin: 0 0 12px; }
+
+.level-badge {
+  display: inline-block; font-family: var(--font-display); font-weight: 800; font-size: 1.1rem;
+  color: #fff; background: var(--grape); border-radius: 12px; padding: 8px 16px; box-shadow: 3px 3px 0 var(--line); margin-bottom: 8px;
+}
+
+/* achievements as a sticker chart of inked stamps */
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; }
+.badge {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px;
+  text-align: center; padding: 12px 8px; border-radius: 12px; min-height: 84px;
+}
+.badge::before { content: ""; width: 30px; height: 30px; border-radius: 50%; flex: none; }
+.badge[data-earned="true"]  { background: color-mix(in srgb, var(--marigold) 13%, var(--card)); border: 2px solid var(--marigold); }
+.badge[data-earned="true"]::before {
+  content: "★" / ""; display: flex; align-items: center; justify-content: center;
+  background: var(--marigold); color: #fff; font-size: .95rem; transform: rotate(-6deg);
+}
+.badge[data-earned="false"] { background: var(--paper); border: 2px dashed var(--line); }
+.badge[data-earned="false"]::before { border: 2px dashed var(--line); }
+.badge-name { font-size: .72rem; font-weight: 700; line-height: 1.2; }
+.badge[data-earned="false"] .badge-name { color: var(--muted); }
+
+.mastery-stars { font-size: 1.7rem; letter-spacing: 5px; color: var(--marigold); line-height: 1; }
+.mastery-stars[data-stars="0"] { font-size: 1.1rem; letter-spacing: normal; color: var(--muted); }
+
+.streak-count { font-family: var(--font-display); font-weight: 800; font-size: 1.5rem; color: var(--marigold); }
+
+/* local leaderboard — reuses the scoresheet grammar */
+.leaderboard { list-style: none; margin: 0; padding: 0; counter-reset: rank; font-variant-numeric: tabular-nums; }
+.leaderboard li { counter-increment: rank; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.leaderboard li:last-child { border-bottom: none; }
+.leaderboard li::before { content: counter(rank); font-family: var(--font-mono); font-size: .8rem; color: var(--muted); width: 1.5em; text-align: right; flex: none; }
+.leaderboard li:first-child::before { content: "★" / "1"; color: var(--marigold); }
+.leaderboard li[data-me="true"] { background: rgba(99,56,214,.09); box-shadow: inset 3px 0 0 var(--grape); border-radius: 6px; }
+.lb-name { flex: 1; font-family: var(--font-display); font-weight: 700; }
+.lb-lvl { font-family: var(--font-mono); font-size: .82rem; color: var(--grape); }
+.lb-xp { font-family: var(--font-mono); font-size: .82rem; color: var(--muted); }
+
+/* ---------- ink-confetti celebration (signature Phase-5 motion moment) ---------- */
+#celebration-layer { position: fixed; inset: 0; z-index: 60; pointer-events: none; overflow: hidden; }
+.confetti-mark {
+  position: absolute; top: -8%; font-family: var(--font-display); font-weight: 800; font-size: 1.5rem;
+  animation: confettiFall 1.6s cubic-bezier(.3,.5,.5,1) forwards;
+}
+.confetti-mark:nth-child(4n+1) { color: var(--grape); }
+.confetti-mark:nth-child(4n+2) { color: var(--marigold); }
+.confetti-mark:nth-child(4n+3) { color: var(--mint); }
+.confetti-mark:nth-child(4n)   { color: var(--rose); }
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0); opacity: 0; }
+  12%  { opacity: 1; }
+  100% { transform: translateY(108vh) rotate(320deg); opacity: .85; }
+}
+
+/* ---------- toasts ---------- */
+#toast-host { position: fixed; right: 16px; bottom: 16px; z-index: 70; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+.toast {
+  background: var(--card); border: 1.5px solid var(--line); border-left: 5px solid var(--grape);
+  border-radius: 12px; box-shadow: var(--shadow); padding: 10px 14px; max-width: 280px;
+  font-family: var(--font-display); font-weight: 700; font-size: .92rem; animation: toastIn .25s ease both;
+}
+.toast[data-kind="achievement"], .toast[data-kind="star"] { border-left-color: var(--marigold); }
+.toast[data-kind="unlock"] { border-left-color: var(--mint); }
+.toast[data-kind="streak"] { border-left-color: var(--rose); }
+@keyframes toastIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+
+/* ---------- unlockable board themes (board-scoped recolors of the inked #) ---------- */
+body[data-board-theme="graphite"]  .board { --grid-ink: #5b5b66; --board-x: #33333b; --board-o: #c0392b; --board-ghost: #a7a7b2; --board-paper: #f6f6f2; }
+body[data-board-theme="blueprint"] .board { --grid-ink: #8fd0ff; --board-x: #ffffff; --board-o: #ffd27f; --board-ghost: #5f8bb3; --board-paper: #103a61; }
+body[data-board-theme="chalk"]     .board { --grid-ink: #ececf2; --board-x: #f2d06b; --board-o: #79cbbd; --board-ghost: #8a94a6; --board-paper: #2f3540; }
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-mark { animation: none; opacity: 0; }
+}
 
 /* ---------- footer ---------- */
 .site-footer {

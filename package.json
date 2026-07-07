@@ -6,6 +6,10 @@
   "scripts": {
     "test": "node scripts/test.js",
     "verify-puzzles": "node scripts/verify-puzzles.js",
-    "verify-lessons": "node scripts/verify-lessons.js"
+    "verify-lessons": "node scripts/verify-lessons.js",
+    "check-relative-paths": "node scripts/check-relative-paths.js",
+    "check-cache-busters": "node scripts/check-cache-busters.js",
+    "check-a11y-glyphs": "node scripts/check-a11y-glyphs.js",
+    "check-publish": "node scripts/check-relative-paths.js && node scripts/check-cache-busters.js && node scripts/check-a11y-glyphs.js"
   }
 }

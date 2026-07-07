@@ -11,6 +11,7 @@ const lessons = require('../js/lessons');
 const matchcode = require('../js/matchcode');
 const characters = require('../js/characters');
 const tournament = require('../js/tournament');
+const gami = require('../js/gamification');
 const { masteryLevel, computeGym } = require('../js/gym');
 
 let passed = 0;
@@ -323,6 +324,50 @@ ok('losing every Ace game does NOT grant the point', () => {
     puzzleAttempts: {}, lessons: {},
   };
   assert.strictEqual(computeGym(store, 'u', puzzles, lessons).hardNotLost, false);
+});
+
+console.log('gamification registry (Phase 5):');
+ok('registry: 5+ modules, each with id/name/description/default/on-hook', () => {
+  assert.ok(gami.MODULES.length >= 5, `only ${gami.MODULES.length} modules`);
+  const ids = new Set();
+  for (const m of gami.MODULES) {
+    assert.ok(m.id && m.name && m.description, `module missing fields: ${JSON.stringify(m)}`);
+    assert.strictEqual(typeof m.default, 'boolean', `${m.id} default not boolean`);
+    assert.strictEqual(typeof m.on, 'function', `${m.id} missing on() hook`);
+    assert.ok(!ids.has(m.id), `duplicate module id ${m.id}`);
+    ids.add(m.id);
+  }
+  // defaultSettings covers every module
+  const ds = gami.defaultSettings();
+  for (const m of gami.MODULES) assert.strictEqual(ds[m.id], m.default);
+});
+ok('xp/level, achievements, streaks, theme-unlock all fire on the right events', () => {
+  const g = { settings: gami.defaultSettings(), state: {} };
+  const a = gami.emit(g, 'game_end', { result: 'draw', opponent: 'ace', day: '2026-07-07' });
+  assert.ok(a.some((n) => /Untouchable/.test(n.text)), 'draw vs Ace should earn Untouchable');
+  for (let i = 0; i < 10; i++) gami.emit(g, 'game_end', { result: 'win', opponent: 'brick', day: '2026-07-07' });
+  assert.strictEqual(g.state.xp.xp, 103, 'xp = 3 (draw) + 10*10 (wins)');
+  assert.strictEqual(gami.levelForXp(g.state.xp.xp), 2);
+  assert.ok(g.state.achievements.earned.includes('ten_wins'));
+  assert.ok(g.state.themes.unlocked.includes('graphite'), 'level 2 unlocks graphite');
+  // streak advances across consecutive days, not same day
+  assert.strictEqual(g.state.streaks.current, 1);
+  gami.emit(g, 'game_end', { result: 'win', opponent: 'brick', day: '2026-07-08' });
+  assert.strictEqual(g.state.streaks.current, 2);
+});
+ok('a disabled module is truly inert (no state, no effect)', () => {
+  const g = { settings: gami.defaultSettings(), state: {} };
+  g.settings.xp = false;
+  g.settings.achievements = false;
+  gami.emit(g, 'game_end', { result: 'win', opponent: 'ace', day: '2026-07-07' });
+  assert.strictEqual(g.state.xp, undefined, 'disabled xp module wrote no state');
+  assert.strictEqual(g.state.achievements, undefined, 'disabled achievements module wrote no state');
+});
+ok('activeTheme respects the themes toggle (off => ink)', () => {
+  const g = { settings: gami.defaultSettings(), state: { themes: { unlocked: ['ink', 'graphite'], selected: 'graphite' } } };
+  assert.strictEqual(gami.activeTheme(g), 'graphite');
+  g.settings.themes = false;
+  assert.strictEqual(gami.activeTheme(g), 'ink', 'disabled themes module leaves no theme applied');
 });
 
 console.log('gym mastery formula:');

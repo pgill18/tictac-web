@@ -11,6 +11,7 @@
   const matchcode = window.TTMatchCode;
   const characters = window.TTCharacters;
   const tournamentMod = window.TTTournament;
+  const gamiMod = window.TTGami;
   const store = window.TTStore;
 
   const $ = (id) => document.getElementById(id);
@@ -48,6 +49,7 @@
     currentUser = name;
     persist();
     refreshUserBar();
+    applyTheme(); // board theme is per-user
     // re-render whatever mode is visible
     rerenderActiveMode();
   }
@@ -82,6 +84,7 @@
     else if (activeMode === 'puzzles') renderPuzzleList();
     else if (activeMode === 'lessons') renderLessonList();
     else if (activeMode === 'gym') renderGym();
+    else if (activeMode === 'settings') renderSettings();
   }
 
   // ---------- board rendering ----------
@@ -113,6 +116,15 @@
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // Render DECORATIVE glyph text (stars/pips/badges) a11y-safely (task #66): the
+  // visible glyphs are aria-hidden so a screen reader never reads "black star black
+  // star…"; the meaning is carried by aria-label on a role="img" wrapper. Needs no
+  // CSS (glyphs stay visible). Use this for ANY decorative glyph string in markup —
+  // scripts/check-a11y-glyphs.js flags bare glyphs in templates that skip it.
+  function decorativeGlyph(glyphs, label) {
+    return `<span role="img" aria-label="${escapeHtml(label)}"><span aria-hidden="true">${glyphs}</span></span>`;
   }
 
   // =======================================================================
@@ -179,8 +191,14 @@
       reload();
       store.recordCharacterResult(s, currentUser, aiGame.characterId, aiGame.status);
       persist();
+      gamiEmit('game_end', { result: outcomeOf(aiGame.status), opponent: aiGame.characterId });
     }
     renderAi();
+  }
+
+  // Map a finished game status to the human's (X) outcome for gamification.
+  function outcomeOf(status) {
+    return status === 'x_win' ? 'win' : status === 'o_win' ? 'loss' : 'draw';
   }
 
   function renderAi() {
@@ -260,10 +278,13 @@
       store.recordCharacterResult(s, currentUser, tourGame.characterId, tourGame.status);
       store.setTournament(s, currentUser, tour);
       // On completion, fold the run into the gym once.
-      if (tournamentMod.isComplete(tour)) {
-        store.recordTournamentResult(s, currentUser, tournamentMod.standings(tour));
-      }
+      const done = tournamentMod.isComplete(tour);
+      const standings = done ? tournamentMod.standings(tour) : null;
+      if (done) store.recordTournamentResult(s, currentUser, standings);
       persist();
+      // Gamification: each tournament game counts as a game_end; the whole run as a tournament_completed.
+      gamiEmit('game_end', { result: outcome, opponent: tourGame.characterId });
+      if (done) gamiEmit('tournament_completed', { placement: standings.placement, points: standings.points });
     }
     renderTour();
   }
@@ -519,8 +540,13 @@
     if (!requireUser($('puzzle-feedback'))) return;
     const correct = p.correct.includes(pos);
     reload();
+    // Gamification counts DISTINCT solved puzzles: only fire the event on the FIRST
+    // correct solve of this puzzle id (repeated practice solves still get recorded for
+    // the gym's solve-rate, but must not farm XP/achievements/stars). rex #56.
+    const priorSolved = ((s.puzzleAttempts[currentUser]) || []).some((a) => a.id === p.id && a.correct);
     store.recordPuzzleAttempt(s, currentUser, p, pos, correct);
     persist();
+    if (correct && !priorSolved) gamiEmit('puzzle_solved', { correct: true, category: p.category, id: p.id });
     let html;
     let displayBoard;
     if (correct) {
@@ -611,6 +637,7 @@
       prog.completed = true;
       prog.step = l.steps.length;
       persist();
+      gamiEmit('lesson_completed', { lessonId: l.id });
       $('lesson-detail').innerHTML = `<h3>${escapeHtml(l.title)}</h3>${okMsg}
         <div class="feedback correct"><span class="tag">Lesson complete!</span> You’ve mastered this one. 🎓</div>`;
       renderLessonList();
@@ -677,9 +704,191 @@
   }
   $('gym-refresh').addEventListener('click', renderGym);
 
+  // =======================================================================
+  // GAMIFICATION (Phase 5) — registry-driven Settings + reward renders
+  // =======================================================================
+  function today() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
+  // Fire a game event through the registry for the current user, persist, and
+  // surface any notifications (toasts + celebration). No-op with no user set.
+  function gamiEmit(type, ctx) {
+    if (!currentUser) return;
+    reload();
+    const gami = store.getGami(s, currentUser);
+    const notes = gamiMod.emit(gami, type, Object.assign({ day: today() }, ctx || {}));
+    persist();
+    handleGamiNotes(notes, gami);
+    // A settings/gym view open in the background should reflect new progress.
+    if (activeMode === 'settings') renderSettings();
+  }
+
+  function handleGamiNotes(notes, gami) {
+    if (!notes || !notes.length) return;
+    const celebrateOn = gamiMod.isEnabled(gami.settings, 'celebration');
+    const worthCelebrating = notes.some((n) => ['celebrate', 'levelup', 'achievement', 'unlock'].includes(n.kind));
+    if (celebrateOn && worthCelebrating) burstConfetti();
+    const toasts = notes.filter((n) => n.kind !== 'celebrate'); // raw celebrate cues aren't text
+    if (toasts.length) showToasts(toasts);
+    applyTheme();
+  }
+
+  // Apply the current user's selected board theme to the page (ink if no user or
+  // the themes module is off — so a disabled module leaves no lingering theme).
+  function applyTheme() {
+    let theme = 'ink';
+    if (currentUser) { reload(); theme = gamiMod.activeTheme(store.getGami(s, currentUser)); }
+    document.body.setAttribute('data-board-theme', theme);
+  }
+
+  function burstConfetti() {
+    const layer = $('celebration-layer');
+    if (!layer) return;
+    const marks = ['X', 'O', '#', '★'];
+    for (let i = 0; i < 14; i++) {
+      const m = document.createElement('span');
+      m.className = 'confetti-mark';
+      m.textContent = marks[i % marks.length];
+      m.style.left = (8 + Math.floor((i / 14) * 84)) + '%';
+      m.style.animationDelay = (i * 40) + 'ms';
+      layer.appendChild(m);
+      setTimeout(() => m.remove(), 1700);
+    }
+  }
+
+  function showToasts(toasts) {
+    let host = document.getElementById('toast-host');
+    if (!host) { host = document.createElement('div'); host.id = 'toast-host'; document.body.appendChild(host); }
+    toasts.forEach((t, i) => {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.setAttribute('data-kind', t.kind);
+      el.textContent = t.text;
+      host.appendChild(el);
+      setTimeout(() => el.remove(), 3200 + i * 250);
+    });
+  }
+
+  // ---- Settings page (generated from the registry) ----
+  function renderSettings() {
+    if (!requireUser($('gamification-modules'))) { $('gami-themes').innerHTML = ''; $('gami-rewards').innerHTML = ''; return; }
+    reload();
+    const gami = store.getGami(s, currentUser);
+    $('gamification-modules').innerHTML = gamiMod.MODULES.map((m) => {
+      const on = gamiMod.isEnabled(gami.settings, m.id);
+      return `<div class="gami-module" data-module-id="${m.id}">
+        <div class="gami-module-text">
+          <div class="gami-module-name">${escapeHtml(m.name)}</div>
+          <div class="gami-module-desc">${escapeHtml(m.description)}</div>
+        </div>
+        <label class="gami-toggle">
+          <input type="checkbox" data-module-toggle="${m.id}" ${on ? 'checked' : ''} aria-label="Toggle ${escapeHtml(m.name)}">
+          <span class="gami-pill" aria-hidden="true"></span>
+        </label>
+      </div>`;
+    }).join('');
+    renderThemes(gami);
+    renderRewards(gami);
+  }
+
+  function renderThemes(gami) {
+    if (!gamiMod.isEnabled(gami.settings, 'themes')) {
+      $('gami-themes').innerHTML = '<p class="muted">Enable “Unlockable Board Themes” above to switch board looks.</p>';
+      return;
+    }
+    const st = gami.state.themes || { unlocked: ['ink'], selected: 'ink' };
+    const unlocked = st.unlocked || ['ink'];
+    const selected = st.selected || 'ink';
+    $('gami-themes').innerHTML = gamiMod.THEMES.map((t) => {
+      const isUnlocked = unlocked.includes(t.id);
+      const sel = t.id === selected;
+      return `<button type="button" class="gami-theme" data-board-theme="${t.id}" data-locked="${!isUnlocked}" data-selected="${sel}"
+        ${isUnlocked ? `data-select-theme="${t.id}"` : 'disabled'}>
+        <span class="gami-theme-name">${escapeHtml(t.name)}</span>
+        <span class="gami-theme-unlock">${isUnlocked ? (sel ? 'Selected' : 'Select') : escapeHtml(t.unlock)}</span>
+      </button>`;
+    }).join('');
+  }
+
+  function renderRewards(gami) {
+    const en = (id) => gamiMod.isEnabled(gami.settings, id);
+    const parts = [];
+    if (en('xp')) {
+      const xp = (gami.state.xp && gami.state.xp.xp) || 0;
+      const lvl = gamiMod.levelForXp(xp);
+      const next = gamiMod.xpForNextLevel(xp);
+      parts.push(`<div class="reward-block" data-reward="level"><h4>Level</h4>
+        <div class="level-badge" data-level="${lvl}">Level ${lvl}</div>
+        <div class="muted">${xp} XP${next != null ? ` · ${next - xp} to next level` : ' · max level'}</div></div>`);
+    }
+    if (en('achievements')) {
+      const earned = (gami.state.achievements && gami.state.achievements.earned) || [];
+      const badges = gamiMod.ACHIEVEMENTS.map((a) => {
+        const got = earned.includes(a.id);
+        return `<div class="badge" data-earned="${got}" data-badge-id="${a.id}" title="${escapeHtml(a.description)}">
+          <span class="badge-name">${escapeHtml(a.name)}</span></div>`;
+      }).join('');
+      parts.push(`<div class="reward-block" data-reward="achievements"><h4>Achievements (${earned.length}/${gamiMod.ACHIEVEMENTS.length})</h4>
+        <div id="badge-grid" class="badge-grid">${badges}</div></div>`);
+    }
+    if (en('mastery')) {
+      const stars = (gami.state.mastery && gami.state.mastery.stars) || 0;
+      parts.push(`<div class="reward-block" data-reward="mastery"><h4>Mastery stars</h4>
+        <div id="mastery-stars" class="mastery-stars" data-stars="${stars}">${decorativeGlyph(stars ? '★'.repeat(stars) : '—', stars + ' mastery ' + (stars === 1 ? 'star' : 'stars'))}</div></div>`);
+    }
+    if (en('streaks')) {
+      const stk = gami.state.streaks || {};
+      parts.push(`<div class="reward-block" data-reward="streak"><h4>Daily streak</h4>
+        <div id="streak-count" class="streak-count" data-streak="${stk.current || 0}">${stk.current || 0} day(s)</div>
+        <div class="muted">Best: ${stk.longest || 0}</div></div>`);
+    }
+    if (en('leaderboard')) {
+      parts.push(`<div class="reward-block" data-reward="leaderboard"><h4>Local leaderboard</h4>
+        <ol id="leaderboard-list" class="leaderboard">${leaderboardRows()}</ol></div>`);
+    }
+    $('gami-rewards').innerHTML = parts.join('') || '<p class="muted">All reward modules are off.</p>';
+  }
+
+  function leaderboardRows() {
+    const ranked = store.listUsers(s).map((n) => {
+      const g = (s.users[n] && s.users[n].gami) || { state: {} };
+      const xp = (g.state && g.state.xp && g.state.xp.xp) || 0;
+      return { n, xp, lvl: gamiMod.levelForXp(xp) };
+    }).sort((a, b) => b.xp - a.xp).slice(0, 10);
+    return ranked.map((r) => `<li data-user="${escapeHtml(r.n)}"${r.n === currentUser ? ' data-me="true"' : ''}>
+      <span class="lb-name">${escapeHtml(r.n)}</span> <span class="lb-lvl">L${r.lvl}</span> <span class="lb-xp">${r.xp} XP</span></li>`).join('');
+  }
+
+  // Toggle a module (delegated — works for any registry-generated row).
+  $('gamification-modules').addEventListener('change', (e) => {
+    const cb = e.target.closest('input[data-module-toggle]');
+    if (!cb) return;
+    reload();
+    store.setGamiSetting(s, currentUser, cb.dataset.moduleToggle, cb.checked);
+    persist();
+    renderSettings();
+    applyTheme();
+  });
+  // Select an unlocked board theme.
+  $('gami-themes').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-select-theme]');
+    if (!btn) return;
+    reload();
+    const gami = store.getGami(s, currentUser);
+    gami.state.themes = gami.state.themes || { unlocked: ['ink'], selected: 'ink' };
+    gami.state.themes.selected = btn.dataset.selectTheme;
+    persist();
+    renderSettings();
+    applyTheme();
+  });
+
   // ---------- init ----------
   refreshUserBar();
   fillCharacterSelect($('ai-character'));
   renderPuzzleCats();
+  applyTheme();
   newAiGame(); // starts a game if a user is set, else shows the prompt-for-user message
 })();

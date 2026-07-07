@@ -71,7 +71,20 @@
     if (!u.matchStats) u.matchStats = { win: 0, loss: 0, draw: 0 };
     if (!u.characterStats) u.characterStats = {}; // charId -> {win,loss,draw}
     if (!u.tournamentStats) u.tournamentStats = emptyTournamentStats();
+    // Phase 5 gamification: per-user { settings: {moduleId->bool overrides}, state: {moduleId->{...}} }.
+    // settings only holds explicit user choices; registry defaults fill the rest.
+    if (!u.gami) u.gami = { settings: {}, state: {} };
+    if (!u.gami.settings) u.gami.settings = {};
+    if (!u.gami.state) u.gami.state = {};
     return u;
+  }
+
+  function getGami(store, user) {
+    return ensureUser(store, user).gami;
+  }
+  // Toggle a gamification module on/off for a user (explicit override).
+  function setGamiSetting(store, user, moduleId, on) {
+    ensureUser(store, user).gami.settings[moduleId] = !!on;
   }
 
   // Record a practice game vs a character, from the user's (X) perspective.
@@ -165,5 +178,6 @@
     recordAiResult, recordMatchResult, recordPuzzleAttempt, getLessonProgress,
     recordCharacterResult, recordTournamentResult,
     getTournament, setTournament, clearTournament, emptyTournamentStats,
+    getGami, setGamiSetting,
   };
 })(typeof self !== 'undefined' ? self : this);

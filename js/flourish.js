@@ -62,7 +62,11 @@
     // faint wobble so it reads hand-drawn, not CAD-straight
     line.setAttribute('x1', x1); line.setAttribute('y1', y1 + 1.5);
     line.setAttribute('x2', x2); line.setAttribute('y2', y2 - 1.5);
-    line.setAttribute('stroke', INK[win.mark]);
+    // Match the strike to the winning marks' actual rendered color, so it stays
+    // correct under any board theme (grape/marigold default; themed otherwise).
+    let stroke = INK[win.mark];
+    try { const c = getComputedStyle(first).color; if (c) stroke = c; } catch (e) {}
+    line.setAttribute('stroke', stroke);
     line.setAttribute('stroke-width', '9');
     line.setAttribute('stroke-linecap', 'round');
     svg.appendChild(line);
