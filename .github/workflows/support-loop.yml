@@ -12,6 +12,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch: # allow manual re-runs for verification
 
 jobs:
   check-publish:
