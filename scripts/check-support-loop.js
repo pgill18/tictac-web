@@ -142,8 +142,14 @@ async function ghListByLabel(state, label) {
         ...(await ghListByLabel('closed', 'resolution:confirmed')),
         ...(await ghListByLabel('closed', 'resolution:unconfirmed')),
       ];
+      // Reports the desk has marked EXEMPT (QA/smoke throwaways, invalid, duplicates) are not
+      // tracked user reports, so they don't need a fixes.json entry. The desk labels them and
+      // the reverse check skips them — otherwise accumulated test noise would false-block ship.
+      const EXEMPT = new Set(['qa:exempt', 'invalid', 'duplicate']);
       for (const it of live) {
-        if (!cited.has(it.number)) problems.push(`bijection: orphan report — #${it.number} is fix-ready/resolved on GitHub but no fixes.json entry cites it (drift)`);
+        const labels = (it.labels || []).map((l) => (typeof l === 'string' ? l : l && l.name));
+        if (labels.some((l) => EXEMPT.has(l))) continue;
+        if (!cited.has(it.number)) problems.push(`bijection: orphan report — #${it.number} is fix-ready/resolved on GitHub but no fixes.json entry cites it (label it qa:exempt if it's a throwaway, else add a fixes.json entry)`);
       }
       bijection = 'live-verified (no dangling refs, no orphan reports)';
     } catch (e) {
