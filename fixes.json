@@ -1,1 +1,2 @@
-[{"source":"local","number":4,"fixedIn":"v21","fixedAt":"2026-07-07","note":"Fixed: the \u201CReport a problem\u201D option now always shows in Settings, even before you pick a player name. (TT-4)"}]
+[{"source":"local","number":4,"fixedIn":"v21","fixedAt":"2026-07-07","note":"Fixed: the “Report a problem” option now always shows in Settings, even before you pick a player name. (TT-4)"},
+{"source":"github","number":11,"fixedIn":"v26","fixedAt":"2026-07-09","note":"Puzzle category buttons now show your progress as a count (solved out of total per category), e.g. Win in 1 shows 2/3. (TT-11)"}]

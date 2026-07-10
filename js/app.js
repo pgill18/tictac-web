@@ -494,13 +494,26 @@
   let puzzleCat = null; // null = all
   let selectedPuzzle = null;
 
+  // Distinct-solved count for a category (null = All). "Solved" = a puzzle id with any correct
+  // attempt for the current user (same semantics as priorSolved / the gym). TT-11 (#11).
+  function puzzleProgress(catKey) {
+    const attempts = (s && s.puzzleAttempts && s.puzzleAttempts[currentUser]) || [];
+    const solved = new Set(attempts.filter((a) => a.correct).map((a) => a.id));
+    const items = catKey ? puzzlesMod.byCategory(catKey) : puzzlesMod.PUZZLES;
+    return { done: items.filter((p) => solved.has(p.id)).length, total: items.length };
+  }
+
   function renderPuzzleCats() {
     const cats = [{ k: null, label: 'All' }].concat(
       Object.keys(puzzlesMod.CATEGORIES).map((k) => ({ k, label: puzzlesMod.CATEGORIES[k] }))
     );
-    $('puzzle-cats').innerHTML = cats.map((c) =>
-      `<button type="button" data-cat="${c.k === null ? '' : c.k}"${c.k === puzzleCat ? ' class="active"' : ''}>${escapeHtml(c.label)}</button>`
-    ).join('');
+    $('puzzle-cats').innerHTML = cats.map((c) => {
+      const { done, total } = puzzleProgress(c.k);
+      const active = c.k === puzzleCat ? ' active' : '';
+      const complete = total > 0 && done === total ? ' complete' : '';
+      // Count is in an aria-hidden span (decorative); the button's aria-label carries it in words.
+      return `<button type="button" data-cat="${c.k === null ? '' : c.k}" class="cat-chip${active}${complete}" aria-label="${escapeHtml(c.label)}, ${done} of ${total} solved">${escapeHtml(c.label)} <span class="cat-count" aria-hidden="true">${done}/${total}</span></button>`;
+    }).join('');
   }
 
   function renderPuzzleList() {
@@ -566,6 +579,7 @@
     const priorSolved = ((s.puzzleAttempts[currentUser]) || []).some((a) => a.id === p.id && a.correct);
     store.recordPuzzleAttempt(s, currentUser, p, pos, correct);
     persist();
+    if (correct && !priorSolved) renderPuzzleCats(); // refresh the category (n/total) counts live (TT-11)
     if (correct && !priorSolved) gamiEmit('puzzle_solved', { correct: true, category: p.category, id: p.id });
     let html;
     let displayBoard;

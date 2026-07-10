@@ -187,6 +187,12 @@ label { display: inline-flex; gap: 8px; align-items: center; }
 .subtabs button.active, .chips button.active {
   background: var(--grape); color: #fff; border-color: var(--grape);
 }
+/* Puzzle category progress count "(n/total)" — TT-11. Muted + tabular so digits don't jitter;
+   iris owns the final look, this is a restrained functional baseline. */
+.chips button .cat-count { opacity: 0.6; font-size: 0.85em; font-variant-numeric: tabular-nums; margin-left: 3px; }
+.chips button.active .cat-count { opacity: 0.85; }
+.chips button.cat-chip.complete { border-color: var(--grape); }
+.chips button.cat-chip.complete .cat-count { opacity: 0.95; font-weight: 600; }
 
 /* ---------- two-pane lists + detail ---------- */
 .puzzle-layout { display: grid; grid-template-columns: 258px 1fr; gap: 18px; margin-top: 14px; }
