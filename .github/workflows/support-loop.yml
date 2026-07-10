@@ -1,0 +1,29 @@
+name: support-loop
+
+# The publish gates, run with credentials so the support-loop BIJECTION is actually enforced
+# (#104): check-support-loop.js does the live dangling-ref + orphan-report checks only when a
+# GitHub read token for the support repo is present. Locally / in the pre-push hook that token is
+# usually absent (dana holds no PAT), so this CI job is the creds-having enforcement point.
+#
+# Setup (operator, one-time): add a repo secret SUPPORT_GITHUB_TOKEN — a fine-grained token with
+# READ access to Issues on the support repo (pgill18/tictac-support). No write scope needed.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # so the append-only check can read prior fixes.json state
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Publish gates + live support-loop bijection
+        run: npm run check-publish
+        env:
+          SUPPORT_GITHUB_TOKEN: ${{ secrets.SUPPORT_GITHUB_TOKEN }}

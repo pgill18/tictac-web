@@ -110,8 +110,13 @@ publishing** (non-zero exit blocks the publish):
   reader doesn't read it out ("black star black star…"). Wrap decorative glyphs with
   `decorativeGlyph(glyphs, label)` (in `js/app.js`) or put `aria-hidden` on the glyph
   + `aria-label` on its container. Guards the recurring #43/#62/#65 leak class (#66).
-- `npm run check-support-loop` — validates `fixes.json` (schema + append-only) and its
-  bijection with support issues, and that `APP_VERSION` equals the uniform cache-buster `N`.
+- `npm run check-support-loop` — validates `fixes.json`: schema, append-only, and that every
+  entry carries a `resolves:[{source,number}]` citing its own report. The **live bijection**
+  (no dangling `resolves` refs; every fix-ready/resolved report is cited — the hard drift gate)
+  runs only when `SUPPORT_GITHUB_TOKEN` (read access to the support repo) is set; without it the
+  script degrades to schema-only and prints a loud warning. That token is provided by the
+  `support-loop` GitHub Actions workflow (`.github/workflows/`), which is the creds-having
+  enforcement point (the local pre-push hook usually has no token, so it can't block on drift).
 
 ### Enforced automatically: pre-push hook
 
