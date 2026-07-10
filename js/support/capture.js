@@ -41,6 +41,28 @@
     }
   }
 
+  // Prune from the clone anything that is NOT visible in the LIVE DOM (#17). External CSS is
+  // not applied inside an SVG <foreignObject>, so class-driven hides like `.hidden{display:none}`
+  // (how the SPA hides inactive tabs) would otherwise all render — the report screenshot then
+  // shows every tab's content instead of the active one. We read getComputedStyle on the LIVE
+  // node (where the real cascade applies) and drop/hide the matching clone node. cloneNode(true)
+  // + the 1:1 canvas swap keep the two node lists index-aligned; if they ever diverge we bail
+  // (leaving the clone untouched) rather than risk removing the wrong node.
+  function pruneInvisible(srcRoot, cloneRoot) {
+    if (typeof getComputedStyle !== 'function') return;
+    const src = srcRoot.querySelectorAll('*');
+    const clone = cloneRoot.querySelectorAll('*');
+    if (src.length !== clone.length) return; // alignment lost — don't risk it, capture as-is
+    const toRemove = [];
+    for (let i = 0; i < src.length; i++) {
+      let cs;
+      try { cs = getComputedStyle(src[i]); } catch (e) { continue; }
+      if (cs.display === 'none') toRemove.push(clone[i]);
+      else if (cs.visibility === 'hidden') clone[i].style.visibility = 'hidden';
+    }
+    for (const el of toRemove) { if (el.parentNode) el.parentNode.removeChild(el); }
+  }
+
   // Rasterize an XHTML string of width×height into a PNG data URL via SVG foreignObject.
   function rasterize(xhtml, width, height) {
     return new Promise((resolve) => {
@@ -77,6 +99,7 @@
 
       const clone = el.cloneNode(true);
       swapCanvases(el, clone);
+      pruneInvisible(el, clone); // #17: drop tabs/sections hidden in the live DOM but not in the style-less SVG
       // Wrap the clone in a namespaced div so it's valid XHTML inside foreignObject.
       const wrapper = document.createElement('div');
       wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
