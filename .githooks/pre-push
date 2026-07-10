@@ -1,0 +1,18 @@
+#!/bin/sh
+# Committed pre-push hook — wired via `core.hooksPath = .githooks` (see scripts/setup-hooks.js,
+# run automatically by npm's "prepare" on install, or manually: npm run setup-hooks).
+#
+# Purpose: the 4 publish gates (relative-paths, cache-busters, a11y-glyphs, check-support-loop)
+# are only useful if they actually run before a push reaches GitHub Pages. This makes them
+# mandatory: a push is BLOCKED if any gate fails, so a stale/inconsistent build (e.g. a mixed
+# ?v= cache-buster set — the #15A incident) can never be published by forgetting to check.
+echo "pre-push: running publish gates (npm run check-publish)…"
+if ! npm run --silent check-publish; then
+  echo "" >&2
+  echo "pre-push: check-publish FAILED — push BLOCKED." >&2
+  echo "Fix the gate(s) reported above (commonly: bump every asset ?v= uniformly + APP_VERSION), then push again." >&2
+  echo "(Emergency override, discouraged: git push --no-verify)" >&2
+  exit 1
+fi
+echo "pre-push: gates green — allowing push."
+exit 0

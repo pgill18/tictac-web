@@ -110,3 +110,17 @@ publishing** (non-zero exit blocks the publish):
   reader doesn't read it out ("black star black star…"). Wrap decorative glyphs with
   `decorativeGlyph(glyphs, label)` (in `js/app.js`) or put `aria-hidden` on the glyph
   + `aria-label` on its container. Guards the recurring #43/#62/#65 leak class (#66).
+- `npm run check-support-loop` — validates `fixes.json` (schema + append-only) and its
+  bijection with support issues, and that `APP_VERSION` equals the uniform cache-buster `N`.
+
+### Enforced automatically: pre-push hook
+
+The gates above are only useful if they actually run before a push reaches Pages, so they're
+wired to run automatically and **block the push on failure** — not left to "remember to run it":
+
+- `.githooks/pre-push` (committed) runs `npm run check-publish`; a non-zero exit aborts the push.
+- It's activated by pointing git at that dir: `git config core.hooksPath .githooks`. You don't
+  do this by hand — `scripts/setup-hooks.js` does it, and it runs automatically on `npm install`
+  (npm's `prepare` lifecycle). To wire an existing clone immediately: `npm run setup-hooks`.
+- The setup is non-fatal on a non-git checkout (tarball/CI export), so it never breaks `npm install`.
+- Emergency override (discouraged, defeats the guard): `git push --no-verify`.
