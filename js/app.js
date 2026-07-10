@@ -1046,6 +1046,10 @@
   }
 
   // ---------- init ----------
+  // Footer version (#20): show the loaded APP_VERSION so a user can tell at a glance whether a
+  // fresh fix is live or a hard-reload is needed (a stale cache shows the old number).
+  const av = $('app-version');
+  if (av) av.textContent = 'v' + (window.APP_VERSION || '?');
   refreshUserBar();
   fillCharacterSelect($('ai-character'));
   renderPuzzleCats();

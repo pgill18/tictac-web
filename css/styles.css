@@ -474,6 +474,7 @@ body[data-board-theme="chalk"]     .board { --grid-ink: #ececf2; --board-x: #f2d
   max-width: 820px; margin: 22px auto 0; padding: 18px 22px 28px;
   border-top: 2px solid var(--line); color: var(--muted); font-size: .9rem; text-align: center;
 }
+.site-footer .app-version { margin: 6px 0 0; font-size: .8rem; opacity: .8; font-variant-numeric: tabular-nums; } /* #20 */
 code { background: var(--paper); border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; font-family: var(--font-mono); font-size: .88em; }
 
 /* ---------- motion / accessibility ---------- */
