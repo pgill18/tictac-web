@@ -1,2 +1,3 @@
 [{"source":"local","number":4,"fixedIn":"v21","fixedAt":"2026-07-07","note":"Fixed: the “Report a problem” option now always shows in Settings, even before you pick a player name. (TT-4)"},
-{"source":"github","number":11,"fixedIn":"v26","fixedAt":"2026-07-09","note":"Puzzle category buttons now show your progress as a count (solved out of total per category), e.g. Win in 1 shows 2/3. (TT-11)"}]
+{"source":"github","number":11,"fixedIn":"v26","fixedAt":"2026-07-09","note":"Puzzle category buttons now show your progress as a count (solved out of total per category), e.g. Win in 1 shows 2/3. (TT-11)"},
+{"source":"github","number":16,"fixedIn":"v27","fixedAt":"2026-07-09","note":"The New report dialog now has a Maximize button (next to ×) that expands it to a full-window overlay, so the screenshot is big enough to read and annotate comfortably. (TT-16)"}]

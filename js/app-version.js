@@ -6,5 +6,5 @@
 // allowlist (inapp-support-plan.md §4) as a plain, non-sensitive build identifier.
 (function (root) {
   'use strict';
-  root.APP_VERSION = 26;
+  root.APP_VERSION = 27;
 })(typeof self !== 'undefined' ? self : this);

@@ -83,6 +83,20 @@
   function header(title) {
     const h = $('div', 'support-panel-head');
     h.appendChild($('h2', 'support-panel-title', title));
+    // Maximize toggle (#16): expand the panel to a near-full-window overlay so the screenshot
+    // annotator has room to read/draw/type on. The annotate canvas is max-width:100% and maps
+    // pointer coords via live getBoundingClientRect, so it scales up with the wider panel — no
+    // reflow needed. Glyph is decorative; the button's accessible name is the aria-label.
+    const max = $('button', 'support-max', '⤢');
+    max.type = 'button'; max.setAttribute('aria-label', 'Maximize'); max.setAttribute('aria-pressed', 'false');
+    max.addEventListener('click', () => {
+      if (!panel) return;
+      const on = panel.classList.toggle('support-panel--max');
+      max.setAttribute('aria-pressed', on ? 'true' : 'false');
+      max.setAttribute('aria-label', on ? 'Restore size' : 'Maximize');
+      max.textContent = on ? '⤡' : '⤢';
+    });
+    h.appendChild(max);
     const x = $('button', 'support-close', '×');
     x.type = 'button'; x.setAttribute('aria-label', 'Close'); x.addEventListener('click', closePanel);
     h.appendChild(x);

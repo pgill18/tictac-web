@@ -16,9 +16,17 @@
   background: #fbf6ea; color: #2b2114; border: 1px solid #7a5c34; border-radius: 10px;
   box-shadow: 0 6px 24px rgba(0,0,0,.25); padding: 12px 14px;
 }
-.support-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.support-panel-title { font-size: 1.1rem; margin: 0; }
-.support-close { border: none; background: none; font-size: 1.4rem; line-height: 1; cursor: pointer; color: inherit; }
+.support-panel-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.support-panel-title { font-size: 1.1rem; margin: 0; flex: 1 1 auto; } /* fills, pushing the buttons right */
+.support-close, .support-max { border: none; background: none; line-height: 1; cursor: pointer; color: inherit; padding: 2px 4px; }
+.support-close { font-size: 1.4rem; }
+.support-max { font-size: 1.15rem; }
+
+/* Maximize (#16): near-full-window overlay so the annotator canvas (max-width:100%) has room. */
+.support-panel--max {
+  right: 16px; left: 16px; top: 16px; bottom: 16px;
+  width: auto; max-height: none; height: auto;
+}
 
 .support-btn, .support-tool {
   display: inline-block; margin: 4px 6px 4px 0; padding: 8px 12px;
