@@ -77,14 +77,18 @@
     // inactive section's DOM — it would surface as a stray node (e.g. the AI
     // tab's default "●○○○" pips appearing before the Tournament heading). Clear
     // the persona of every non-active mode; the active mode repopulates its own.
-    if (activeMode !== 'ai') $('ai-persona').innerHTML = '';
-    if (activeMode !== 'tournament') $('tour-persona').innerHTML = '';
+    // Also clear the previous mode's BOARD markup, not just toggle its section's
+    // CSS — a leftover empty-cell (e.g. AI cell "1") was surfacing in the a11y tree
+    // after AI→Settings→Help (#65). The active mode re-renders its board from state.
+    if (activeMode !== 'ai') { $('ai-persona').innerHTML = ''; clearBoardEl($('ai-board')); }
+    if (activeMode !== 'tournament') { $('tour-persona').innerHTML = ''; clearBoardEl($('tour-board')); }
     if (activeMode === 'ai') { if (!aiGame && currentUser) newAiGame(); else renderAi(); }
     else if (activeMode === 'tournament') { tour = null; tourGame = null; renderTour(); }
     else if (activeMode === 'puzzles') renderPuzzleList();
     else if (activeMode === 'lessons') renderLessonList();
     else if (activeMode === 'gym') renderGym();
     else if (activeMode === 'settings') renderSettings();
+    else if (activeMode === 'help') renderWhatsNew();
   }
 
   // ---------- board rendering ----------
@@ -101,17 +105,33 @@
         cell.textContent = mark;
       } else {
         cell.className = 'cell empty';
-        cell.textContent = String(i + 1);
+        cell.textContent = String(i + 1); // visible position hint
       }
       const canPlay = opts.interactive && !mark && opts.onCell;
       if (canPlay) {
         cell.classList.add('playable');
+        // a11y (#87): label the cell so a screen reader reads its meaning, not the raw
+        // digit ("1"). The visible number stays for sighted users; aria-label overrides it.
+        cell.setAttribute('role', 'button');
+        cell.setAttribute('aria-label', `Play position ${i + 1}`);
         cell.addEventListener('click', () => opts.onCell(i));
       } else if (opts.interactive) {
         cell.classList.add('disabled');
       }
+      // An empty, non-playable cell's position digit is purely decorative — hide it from
+      // the a11y tree so it isn't read out as a bare "1".."9" (#87/#65-class).
+      if (!mark && !canPlay) cell.setAttribute('aria-hidden', 'true');
       container.appendChild(cell);
     }
+  }
+
+  // Empty a board element (remove its cells) and mark it .empty (display:none). Used
+  // to tear down an inactive mode's board so stale cells can't linger in the DOM/a11y
+  // tree (#65). The active mode re-renders its board from state when it becomes active.
+  function clearBoardEl(el) {
+    if (!el) return;
+    el.innerHTML = '';
+    el.classList.add('empty');
   }
 
   function escapeHtml(str) {
@@ -774,6 +794,11 @@
 
   // ---- Settings page (generated from the registry) ----
   function renderSettings() {
+    // App-level settings (Show support button + Report a problem) are app-WIDE, not
+    // per-profile — render them FIRST, before the per-user gate, so they show even with
+    // no username selected (support #4: the toggle was missing entirely for users who
+    // hadn't picked a name, because this function returned early below).
+    renderAppSettings();
     if (!requireUser($('gamification-modules'))) { $('gami-themes').innerHTML = ''; $('gami-rewards').innerHTML = ''; return; }
     reload();
     const gami = store.getGami(s, currentUser);
@@ -793,6 +818,42 @@
     renderThemes(gami);
     renderRewards(gami);
   }
+
+  // App-level (not per-profile) toggles, persisted in the appSettings namespace.
+  // "Show support button" now shows/hides the real support FAB (S1, #78) via
+  // TTSupportWidget.applyVisibility() in the change handler below.
+  function renderAppSettings() {
+    reload();
+    const on = store.getAppSetting(s, 'showSupportButton', false);
+    $('app-settings').innerHTML = `<div class="gami-module" data-app-setting="showSupportButton">
+      <div class="gami-module-text">
+        <div class="gami-module-name">Show support button</div>
+        <div class="gami-module-desc">Show a “Report a problem” button in the corner of the app.</div>
+      </div>
+      <label class="gami-toggle">
+        <input type="checkbox" data-app-toggle="showSupportButton" ${on ? 'checked' : ''} aria-label="Toggle Show support button">
+        <span class="gami-pill" aria-hidden="true"></span>
+      </label>
+    </div>
+    <button id="app-report-problem" type="button" class="support-btn">Report a problem</button>
+    <p class="muted" style="font-size:.82rem">You can always report a problem here, even with the button above turned off.</p>`;
+  }
+
+  $('app-settings').addEventListener('change', (e) => {
+    const cb = e.target.closest('input[data-app-toggle]');
+    if (!cb) return;
+    reload();
+    store.setAppSetting(s, cb.dataset.appToggle, cb.checked);
+    persist();
+    renderAppSettings();
+    // Show/hide the support FAB to match the toggle.
+    if (cb.dataset.appToggle === 'showSupportButton' && window.TTSupportWidget) window.TTSupportWidget.applyVisibility();
+  });
+  // "Report a problem" opens the support panel directly — always available even when
+  // the FAB is hidden (§10 / support #4 discoverability).
+  $('app-settings').addEventListener('click', (e) => {
+    if (e.target.closest('#app-report-problem') && window.TTSupportWidget) window.TTSupportWidget.open();
+  });
 
   function renderThemes(gami) {
     if (!gamiMod.isEnabled(gami.settings, 'themes')) {
@@ -849,6 +910,16 @@
       parts.push(`<div class="reward-block" data-reward="leaderboard"><h4>Local leaderboard</h4>
         <ol id="leaderboard-list" class="leaderboard">${leaderboardRows()}</ol></div>`);
     }
+    if (en('contributor')) {
+      const earned = (gami.state.contributor && gami.state.contributor.earned) || [];
+      const badges = gamiMod.CONTRIB_BADGES.map((b) => {
+        const got = earned.includes(b.id);
+        return `<div class="badge" data-earned="${got}" data-badge-id="${b.id}" title="${escapeHtml(b.description)}">
+          <span class="badge-name">${escapeHtml(b.name)}</span></div>`;
+      }).join('');
+      parts.push(`<div class="reward-block" data-reward="contributor"><h4>Contributor badges (${earned.length}/${gamiMod.CONTRIB_BADGES.length})</h4>
+        <div id="contributor-grid" class="badge-grid">${badges}</div></div>`);
+    }
     $('gami-rewards').innerHTML = parts.join('') || '<p class="muted">All reward modules are off.</p>';
   }
 
@@ -884,6 +955,81 @@
     renderSettings();
     applyTheme();
   });
+
+  // =======================================================================
+  // HELP ▸ WHAT'S NEW (in-app-support S1 pre-work #75) — renders fixes.json.
+  // The ONLY network I/O here is fetching the same-origin static fixes.json (not
+  // the relay, which doesn't exist yet). Fetched no-store + an hour-bucket query
+  // param (bounded, CDN-proof — NOT the release cache-buster). Copy in the empty/
+  // error states is placeholder text owned by walt (task #75).
+  // =======================================================================
+  function hourBucket() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}`;
+  }
+
+  function renderWhatsNew() {
+    const wrap = $('whatsnew');
+    const empty = $('whatsnew-empty');
+    const list = $('whatsnew-list');
+    wrap.setAttribute('aria-busy', 'true');
+    empty.textContent = 'Loading…';
+    empty.classList.remove('hidden');
+    list.innerHTML = '';
+    fetch(`fixes.json?t=${hourBucket()}`, { cache: 'no-store' })
+      .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then((fixes) => {
+        wrap.setAttribute('aria-busy', 'false');
+        if (!Array.isArray(fixes) || fixes.length === 0) {
+          empty.textContent = 'Nothing new to report yet. Check back after the next update.';
+          empty.classList.remove('hidden');
+          return;
+        }
+        empty.classList.add('hidden');
+        // Newest first (ISO date strings sort lexicographically).
+        const items = fixes.slice().sort((a, b) => String(b.fixedAt || '').localeCompare(String(a.fixedAt || '')));
+        list.innerHTML = items.map((f) => `<li class="whatsnew-entry">
+          <div class="whatsnew-note">${escapeHtml(f.note || '')}</div>
+          <div class="whatsnew-meta muted">${escapeHtml(f.fixedIn || '')}${f.fixedAt ? ' · ' + escapeHtml(f.fixedAt) : ''}</div>
+        </li>`).join('');
+      })
+      .catch(() => {
+        wrap.setAttribute('aria-busy', 'false');
+        empty.textContent = "Couldn't load updates — try again later.";
+        empty.classList.remove('hidden');
+        list.innerHTML = '';
+      });
+  }
+
+  // ---------- in-app support widget (S1) ----------
+  // Host hooks: the widget owns its UI/transport; app.js supplies current user/view, the
+  // context allowlist inputs, a persist bridge, and routes report events to the Contributor
+  // module (the thanks moment). The profile name is passed ONLY to the widget's client-side
+  // attribution — never into the context payload (context.js excludes it).
+  if (window.TTSupportWidget) {
+    window.TTSupportWidget.init({
+      currentUser: () => currentUser,
+      currentView: () => activeMode,
+      settingsSnapshot: () => {
+        reload();
+        const gami = store.getGami(s, currentUser || '');
+        return {
+          boardTheme: gamiMod.activeTheme(gami),
+          showSupportButton: store.getAppSetting(s, 'showSupportButton', false),
+          gami: gami.settings,
+        };
+      },
+      onReportEvent: (type, ctx) => {
+        if (!currentUser) return; // badge attribution needs a profile
+        reload();
+        gamiMod.emit(store.getGami(s, currentUser), type, ctx);
+        persist();
+      },
+      persist: (fn) => { reload(); fn(s); persist(); },
+    });
+    window.TTSupportWidget.applyVisibility();
+  }
 
   // ---------- init ----------
   refreshUserBar();

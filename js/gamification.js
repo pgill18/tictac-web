@@ -50,6 +50,17 @@
   const ACH_BY_ID = {};
   ACHIEVEMENTS.forEach((a) => { ACH_BY_ID[a.id] = a; });
 
+  // ---- contributor badges (in-app-support reward loop, §5). Earned via support
+  // events, not gameplay; the meaningful tier is keyed on resolution:confirmed. ----
+  const CONTRIB_BADGES = [
+    { id: 'first_report', name: 'First Report', description: 'File your first report.' },
+    { id: 'regular', name: 'Regular', description: 'File 10 reports.' },
+    { id: 'confirmed_fix', name: 'Confirmed Fix', description: 'A fix from your report was confirmed.' },
+    { id: 'sharp_eye', name: 'Sharp Eye', description: 'Three of your reports led to confirmed fixes.' },
+  ];
+  const CONTRIB_BY_ID = {};
+  CONTRIB_BADGES.forEach((b) => { CONTRIB_BY_ID[b.id] = b; });
+
   // ---- board themes (visual variants; iris owns the CSS recolors) ----
   const THEMES = [
     { id: 'ink', name: 'Ink', unlock: 'Default — always available.' },
@@ -159,6 +170,32 @@
       // Read-only/derived (ranks all users by their xp state); no per-event state.
       on() {},
     },
+    {
+      id: 'contributor', name: 'Contributor', default: true,
+      description: 'Thanks and badges for reporting bugs and suggestions.',
+      // The reward loop for in-app support (inapp-support-plan.md §5). Reacts to
+      // support events — 'report_filed' (any filing) and 'report_confirmed' (keyed
+      // ONLY on resolution:confirmed). No live trigger exists yet (the filing UI is
+      // gated until S2), so today it only fires via direct emit() calls in tests;
+      // the registry entry + idempotent badge logic is the deliverable (#74).
+      on(ev, api) {
+        const st = api.state;
+        st.earned = st.earned || [];
+        const earn = (id) => {
+          if (!st.earned.includes(id)) { st.earned.push(id); api.note(`Contributor badge: ${CONTRIB_BY_ID[id].name}`, 'contributor'); }
+        };
+        if (ev.type === 'report_filed') {
+          st.filings = (st.filings || 0) + 1;
+          earn('first_report');                       // any filing, once
+          if (st.filings >= 10) earn('regular');       // 10 filings, once (capped)
+        } else if (ev.type === 'report_confirmed') {
+          // Keyed ONLY on resolution:confirmed — the meaningful, inflation-proof tier.
+          st.confirmed = (st.confirmed || 0) + 1;
+          earn('confirmed_fix');                       // first confirmed fix
+          if (st.confirmed >= 3) earn('sharp_eye');    // 3 confirmed fixes
+        }
+      },
+    },
   ];
 
   const MOD_BY_ID = {};
@@ -219,9 +256,10 @@
   }
 
   return {
-    MODULES, ACHIEVEMENTS, THEMES, LEVEL_THRESHOLDS, XP_AWARD,
+    MODULES, ACHIEVEMENTS, THEMES, CONTRIB_BADGES, LEVEL_THRESHOLDS, XP_AWARD,
     byId, defaultSettings, isEnabled, emit,
     levelForXp, xpForNextLevel, masteryStars, activeTheme, themeName,
     achievementById: (id) => ACH_BY_ID[id] || null,
+    contributorBadgeById: (id) => CONTRIB_BY_ID[id] || null,
   };
 });

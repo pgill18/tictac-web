@@ -36,7 +36,40 @@
   }
 
   function emptyStore() {
-    return { currentUser: null, users: {}, puzzleAttempts: {}, lessons: {}, recordedMatches: {}, tournaments: {} };
+    // appSettings is APP-WIDE (not per-profile) — distinct from the per-user gami
+    // settings under users[name].gami. Home for app-level toggles like the future
+    // "Show support button" (inapp-support-plan.md §10). Inert until S2 wires a widget.
+    // supportReports is BROWSER-GLOBAL (§5) — every filed report regardless of profile;
+    // each report carries a client-only `user` for badge attribution (never transmitted).
+    return { currentUser: null, users: {}, puzzleAttempts: {}, lessons: {}, recordedMatches: {}, tournaments: {}, appSettings: {}, supportReports: [] };
+  }
+
+  // --- support reports (§9 data contract) — browser-global, not per-user ---
+  function getSupportReports(store) {
+    if (!Array.isArray(store.supportReports)) store.supportReports = [];
+    return store.supportReports;
+  }
+  function addSupportReport(store, report) {
+    getSupportReports(store).push(report);
+    return report;
+  }
+  function findSupportReport(store, clientReportId) {
+    return getSupportReports(store).find((r) => r.clientReportId === clientReportId) || null;
+  }
+  function updateSupportReport(store, clientReportId, patch) {
+    const r = findSupportReport(store, clientReportId);
+    if (r) Object.assign(r, patch);
+    return r;
+  }
+
+  // App-level (not per-user) settings accessors.
+  function getAppSetting(store, key, dflt) {
+    if (!store.appSettings) store.appSettings = {};
+    return Object.prototype.hasOwnProperty.call(store.appSettings, key) ? store.appSettings[key] : dflt;
+  }
+  function setAppSetting(store, key, value) {
+    if (!store.appSettings) store.appSettings = {};
+    store.appSettings[key] = value;
   }
 
   function emptyTournamentStats() {
@@ -179,5 +212,7 @@
     recordCharacterResult, recordTournamentResult,
     getTournament, setTournament, clearTournament, emptyTournamentStats,
     getGami, setGamiSetting,
+    getAppSetting, setAppSetting,
+    getSupportReports, addSupportReport, findSupportReport, updateSupportReport,
   };
 })(typeof self !== 'undefined' ? self : this);

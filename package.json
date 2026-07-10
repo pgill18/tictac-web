@@ -10,6 +10,7 @@
     "check-relative-paths": "node scripts/check-relative-paths.js",
     "check-cache-busters": "node scripts/check-cache-busters.js",
     "check-a11y-glyphs": "node scripts/check-a11y-glyphs.js",
-    "check-publish": "node scripts/check-relative-paths.js && node scripts/check-cache-busters.js && node scripts/check-a11y-glyphs.js"
+    "check-support-loop": "node scripts/check-support-loop.js",
+    "check-publish": "node scripts/check-relative-paths.js && node scripts/check-cache-busters.js && node scripts/check-a11y-glyphs.js && node scripts/check-support-loop.js"
   }
 }

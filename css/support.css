@@ -1,0 +1,57 @@
+/* support.css — functional styling for the support widget (js/support/*). Layout/usability
+   only; iris owns the final visual identity within the Worksheet system. Scoped to
+   .support-* so it can't touch game UI. */
+
+.support-fab {
+  position: fixed; right: 16px; bottom: 16px; z-index: 9000;
+  padding: 10px 14px; border: 1px solid #7a5c34; border-radius: 999px;
+  background: #f4ead6; color: #3a2c17; font: inherit; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+.support-fab:hover { background: #efe1c6; }
+
+.support-panel {
+  position: fixed; right: 16px; bottom: 72px; z-index: 9001;
+  width: min(380px, calc(100vw - 32px)); max-height: min(78vh, 640px); overflow: auto;
+  background: #fbf6ea; color: #2b2114; border: 1px solid #7a5c34; border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.25); padding: 12px 14px;
+}
+.support-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.support-panel-title { font-size: 1.1rem; margin: 0; }
+.support-close { border: none; background: none; font-size: 1.4rem; line-height: 1; cursor: pointer; color: inherit; }
+
+.support-btn, .support-tool {
+  display: inline-block; margin: 4px 6px 4px 0; padding: 8px 12px;
+  border: 1px solid #7a5c34; border-radius: 6px; background: #f1e6d0; color: #2b2114;
+  font: inherit; cursor: pointer;
+}
+.support-btn.primary { background: #6338d6; color: #fff; border-color: #4d2ba8; }
+.support-btn:disabled { opacity: .6; cursor: default; }
+.support-btn { display: block; width: 100%; margin: 8px 0; text-align: center; }
+.support-tool { display: inline-block; width: auto; padding: 4px 8px; font-size: .85rem; }
+
+.support-input, .support-textarea, .support-type {
+  display: block; width: 100%; margin: 6px 0; padding: 8px; box-sizing: border-box;
+  border: 1px solid #9a7b4f; border-radius: 6px; font: inherit; background: #fff;
+}
+.support-shot { margin: 8px 0; }
+.support-shot-host { margin-top: 6px; }
+.support-annotate-canvas { max-width: 100%; height: auto; border: 1px solid #9a7b4f; border-radius: 4px; touch-action: none; cursor: crosshair; }
+.support-tools { margin: 6px 0; }
+
+.support-disclosure { font-size: .82rem; color: #4a3a22; margin: 8px 0 2px; }
+.support-fineprint { font-size: .78rem; color: #6a583c; margin: 4px 0; }
+.support-status { font-size: .9rem; margin-top: 6px; min-height: 1.1em; }
+
+.support-report-row { display: flex; justify-content: space-between; gap: 8px; width: 100%; text-align: left; }
+.support-report-state { color: #6a583c; font-size: .82rem; white-space: nowrap; }
+.support-timeline { font-size: .82rem; color: #4a3a22; padding-left: 18px; }
+.support-thread { margin: 8px 0; }
+.support-msg { margin: 6px 0; padding: 8px; border-radius: 8px; }
+.support-msg.from-support { background: #efe6d2; }
+.support-msg.from-you { background: #e5ddf6; }
+.support-msg-who { font-size: .72rem; color: #6a583c; margin-bottom: 2px; }
+.support-needsreply { font-weight: 600; color: #6338d6; }
+
+/* The a11y announcer region (TTA11y) if it needs visual hiding fallback. */
+.support-sr-only, .tta11y-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

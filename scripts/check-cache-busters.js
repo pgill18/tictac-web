@@ -73,6 +73,18 @@ for (const f of htmlFiles) {
   }
 }
 
+// APP_VERSION (js/app-version.js) must equal the uniform cache-buster N, so the
+// app's self-reported version never drifts from what's actually served (§8).
+try {
+  const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const nMatch = idx.match(/[?&]v=(\d+)/); // uniformity already asserted above
+  const av = fs.readFileSync(path.join(ROOT, 'js', 'app-version.js'), 'utf8').match(/APP_VERSION\s*=\s*(\d+)/);
+  if (!av) problems.push('js/app-version.js  [APP_VERSION constant not found]');
+  else if (nMatch && av[1] !== nMatch[1]) {
+    problems.push(`js/app-version.js  [APP_VERSION=${av[1]} must equal the uniform cache-buster N=${nMatch[1]}]`);
+  }
+} catch (e) { problems.push(`app-version check failed: ${e.message}`); }
+
 if (problems.length) {
   console.log('FAIL — cache-buster problems (a stale mix of old+new assets could be served):');
   problems.forEach((p) => console.log('  ' + p));

@@ -6,7 +6,8 @@
   <title>tictac — learn and play tic-tac-toe</title>
   <!-- Inline SVG favicon (data URI) — no separate file, avoids the favicon.ico 404 on file:// and any static host. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%237a33bd'/%3E%3Cg stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='11.5' y1='2' x2='11.5' y2='30'/%3E%3Cline x1='20.5' y1='2' x2='20.5' y2='30'/%3E%3Cline x1='2' y1='11.5' x2='30' y2='11.5'/%3E%3Cline x1='2' y1='20.5' x2='30' y2='20.5'/%3E%3C/g%3E%3Ctext x='6.5' y='9.5' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EX%3C/text%3E%3Ctext x='23' y='28' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EO%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="css/styles.css?v=15" />
+  <link rel="stylesheet" href="css/styles.css?v=24" />
+  <link rel="stylesheet" href="css/support.css?v=24" />
 </head>
 <body>
   <header class="site-header">
@@ -29,6 +30,7 @@
     <button type="button" data-mode="lessons">Lessons</button>
     <button type="button" data-mode="gym">Gym</button>
     <button type="button" data-mode="settings">Settings</button>
+    <button type="button" data-mode="help">Help</button>
   </nav>
 
   <main>
@@ -146,6 +148,24 @@
 
       <h3>Your rewards</h3>
       <div id="gami-rewards" class="gami-rewards"></div>
+
+      <h3>App</h3>
+      <!-- App-level (not per-profile) toggles. Rendered in renderSettings from the
+           appSettings namespace. "Show support button" is an inert placeholder — no
+           support widget exists yet (S2-gated). -->
+      <div id="app-settings" class="gami-modules"></div>
+    </section>
+
+    <!-- ================= HELP ================= -->
+    <section id="mode-help" class="mode hidden">
+      <h2>Help</h2>
+      <h3>What's new</h3>
+      <!-- Rendered from fixes.json (fetched no-store + hour-bucket param). walt owns the
+           copy that slots into #whatsnew-empty (empty state) and the per-entry note text. -->
+      <div id="whatsnew" class="whatsnew" aria-busy="true">
+        <p id="whatsnew-empty" class="muted">Loading…</p>
+        <ul id="whatsnew-list" class="whatsnew-list"></ul>
+      </div>
     </section>
   </main>
 
@@ -161,20 +181,30 @@
        local asset below carries ?v=N, and on each release ALL are bumped to the SAME new N —
        so a browser/static host can never serve a stale mix of old+new files (root cause of the
        #15A stale-cache incident). Bump them together, not per-file. -->
-  <script src="js/board.js?v=15"></script>
-  <script src="js/ai.js?v=15"></script>
-  <script src="js/characters.js?v=15"></script>
-  <script src="js/tournament.js?v=15"></script>
-  <script src="js/puzzles.js?v=15"></script>
-  <script src="js/lessons.js?v=15"></script>
-  <script src="js/matchcode.js?v=15"></script>
-  <script src="js/gym.js?v=15"></script>
-  <script src="js/gamification.js?v=15"></script>
-  <script src="js/store.js?v=15"></script>
+  <script src="js/app-version.js?v=24"></script>
+  <script src="js/board.js?v=24"></script>
+  <script src="js/ai.js?v=24"></script>
+  <script src="js/characters.js?v=24"></script>
+  <script src="js/tournament.js?v=24"></script>
+  <script src="js/puzzles.js?v=24"></script>
+  <script src="js/lessons.js?v=24"></script>
+  <script src="js/matchcode.js?v=24"></script>
+  <script src="js/gym.js?v=24"></script>
+  <script src="js/gamification.js?v=24"></script>
+  <script src="js/store.js?v=24"></script>
+  <!-- In-app support (S1) — self-contained modules under js/support/. a11y.js is iris's
+       scaffolding; the rest wire to it. Loaded before app.js, which calls TTSupportWidget.init. -->
+  <script src="js/support/a11y.js?v=24"></script>
+  <script src="js/support/config.js?v=24"></script>
+  <script src="js/support/transport.js?v=24"></script>
+  <script src="js/support/context.js?v=24"></script>
+  <script src="js/support/capture.js?v=24"></script>
+  <script src="js/support/annotate.js?v=24"></script>
+  <script src="js/support/widget.js?v=24"></script>
   <!-- UI controller -->
-  <script src="js/app.js?v=15"></script>
+  <script src="js/app.js?v=24"></script>
   <!-- Presentation-only finishing layer (winning-line ink strike + dry-voice copy).
        Reads rendered DOM only; touches no game logic, storage, or existing hooks. -->
-  <script src="js/flourish.js?v=15"></script>
+  <script src="js/flourish.js?v=24"></script>
 </body>
 </html>

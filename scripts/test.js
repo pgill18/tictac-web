@@ -224,6 +224,74 @@ console.log('store: match-code result recording is idempotent per (user, final b
     assert.deepStrictEqual(resumed.board, ['X', null, null, null, 'O', null, null, null, null], 'in-flight board was lost on reload');
     assert.strictEqual(tournament.nextOpponent(resumed), 'scribble', 'resumed run should still be on the first opponent');
   });
+
+  ok('a report is persisted before send and never lost on failure/degrade (#86)', () => {
+    // Mirrors widget.submit anti-loss: add an "unsent" record first, then either
+    // update to "filed" (success) or leave it "unsent" (send failed / file:// degrade).
+    let s = store.load();
+    store.addSupportReport(s, { clientReportId: 'lose1', source: 'local', number: null, key: null, type: 'enhancement', title: 'x', workState: 'unsent', bundle: null });
+    store.save(s);
+    // success path → update to filed with a real number
+    s = store.load();
+    store.updateSupportReport(s, 'lose1', { source: 'local', number: 9, key: 'k', workState: 'filed' });
+    store.save(s);
+    assert.strictEqual(store.findSupportReport(store.load(), 'lose1').workState, 'filed');
+    // degrade path → stays unsent with a copyable bundle, still present (never lost)
+    s = store.load();
+    store.addSupportReport(s, { clientReportId: 'lose2', source: 'local', number: null, key: null, type: 'bug', title: 'y', workState: 'unsent', bundle: null });
+    store.updateSupportReport(s, 'lose2', { bundle: 'BUNDLE-TEXT' });
+    store.save(s);
+    const r2 = store.findSupportReport(store.load(), 'lose2');
+    assert.strictEqual(r2.workState, 'unsent', 'degraded report stays unsent, not silently dropped');
+    assert.strictEqual(r2.bundle, 'BUNDLE-TEXT', 'bundle saved so the user can still copy/send it');
+  });
+  ok('supportReports is browser-global + round-trips; profile name stays local (S1 #78)', () => {
+    let s = store.load();
+    store.addSupportReport(s, { clientReportId: 'crid1', source: 'local', number: 7, key: 'k', type: 'bug', title: 'x', user: 'alice', workState: 'filed' });
+    store.save(s);
+    s = store.load();
+    const r = store.findSupportReport(s, 'crid1');
+    assert.ok(r && r.number === 7, 'report survives reload');
+    assert.strictEqual(r.user, 'alice', 'profile name kept LOCALLY on the report (never transmitted)');
+    assert.ok(Array.isArray(s.supportReports), 'supportReports is a top-level (browser-global) array, not per-user');
+    store.updateSupportReport(s, 'crid1', { workState: 'fix-ready', needsReply: true });
+    store.save(s);
+    assert.strictEqual(store.findSupportReport(store.load(), 'crid1').workState, 'fix-ready', 'update persists');
+  });
+  ok('tournament resumes the in-flight board across a simulated tab switch (regression #84/#49)', () => {
+    // Mirrors app.js tourPlay→persist and renderTour→resume, minus the DOM: a move
+    // persists tour.board; a tab switch (tour/tourGame nulled, board DOM cleared — DOM
+    // only, never the store) must resume the exact position, not reset to 0/12.
+    let s = store.load();
+    store.ensureUser(s, 'trep');
+    let tour = tournament.newTournament(); tour.board = null;
+    store.setTournament(s, 'trep', tour); store.save(s);
+    // a move lands (X + O), game still in progress → persist tour.board
+    const mid = ['O', null, null, null, 'X', null, null, null, null];
+    tour.board = mid.slice();
+    store.setTournament(s, 'trep', tour); store.save(s);
+    // TAB SWITCH: forget the in-memory tour/tourGame; the store is untouched
+    tour = null;
+    // switch back → loadTour + reconstruct
+    s = store.load();
+    tour = store.getTournament(s, 'trep');
+    const nextId = tournament.nextOpponent(tour);
+    const resumed = tour.board && tour.board.length === 9 ? tour.board.slice() : board.emptyBoard();
+    assert.deepStrictEqual(resumed, mid, 'in-flight board resumed, not reset');
+    assert.strictEqual(nextId, 'scribble', 'still on the first opponent');
+    assert.strictEqual(tournament.standings(tour).points, 0, 'points 0/12 is correct pre-completion, not a reset');
+  });
+  ok('app-level settings namespace persists, distinct from per-user gami (support pre-work #73)', () => {
+    let s = store.load();
+    assert.strictEqual(store.getAppSetting(s, 'showSupportButton', false), false, 'defaults to the given default');
+    store.setAppSetting(s, 'showSupportButton', true);
+    store.save(s);
+    s = store.load();
+    assert.strictEqual(store.getAppSetting(s, 'showSupportButton', false), true, 'app setting survives reload');
+    // app-level, NOT under any user profile
+    assert.ok(s.appSettings && s.appSettings.showSupportButton === true);
+    assert.ok(!s.users || Object.keys(s.users).every((n) => !s.users[n].appSettings), 'not stored per-user');
+  });
 })();
 
 console.log('characters (Phase 4):');
@@ -355,6 +423,25 @@ ok('xp/level, achievements, streaks, theme-unlock all fire on the right events',
   gami.emit(g, 'game_end', { result: 'win', opponent: 'brick', day: '2026-07-08' });
   assert.strictEqual(g.state.streaks.current, 2);
 });
+ok('contributor badges: idempotent, confirmed-keyed, inert when off (support pre-work #74)', () => {
+  const g = { settings: gami.defaultSettings(), state: {} };
+  gami.emit(g, 'report_filed', {}); gami.emit(g, 'report_filed', {});
+  assert.deepStrictEqual(g.state.contributor.earned, ['first_report'], 'first_report fires once, not per filing');
+  assert.strictEqual(g.state.contributor.filings, 2);
+  for (let i = 0; i < 8; i++) gami.emit(g, 'report_filed', {}); // 10 total
+  assert.ok(g.state.contributor.earned.includes('regular'), '10 filings earns Regular');
+  // confirmed-only tier
+  assert.ok(!g.state.contributor.earned.includes('confirmed_fix'), 'confirmed tier is NOT keyed on filings');
+  gami.emit(g, 'report_confirmed', {});
+  assert.ok(g.state.contributor.earned.includes('confirmed_fix'), 'first confirmed earns Confirmed Fix');
+  gami.emit(g, 'report_confirmed', {}); gami.emit(g, 'report_confirmed', {}); // 3 confirmed
+  assert.ok(g.state.contributor.earned.includes('sharp_eye'), '3 confirmed earns Sharp Eye');
+  // off = inert
+  const off = { settings: gami.defaultSettings(), state: {} };
+  off.settings.contributor = false;
+  gami.emit(off, 'report_filed', {});
+  assert.strictEqual(off.state.contributor, undefined, 'disabled contributor writes no state');
+});
 ok('a disabled module is truly inert (no state, no effect)', () => {
   const g = { settings: gami.defaultSettings(), state: {} };
   g.settings.xp = false;
@@ -381,4 +468,85 @@ ok('mid progress is Intermediate', () => {
   assert.strictEqual(masteryLevel(2, false, 0.6, 10).level, 'Intermediate');
 });
 
-console.log(`\nAll ${passed} tests passed.`);
+console.log('support transport binding (S2 relay switch):');
+(function () {
+  const t = require('../js/support/transport');
+  const save = { location: global.location, fetch: global.fetch, window: global.window };
+  const set = (o) => {
+    global.location = { protocol: o.protocol || 'https:' };
+    global.window = { TTSupportConfig: 'config' in o ? o.config : null };
+    global.fetch = o.fetch || null;
+    t._resetBinding();
+  };
+  const restore = () => { global.location = save.location; global.window = save.window; global.fetch = save.fetch; t._resetBinding(); };
+
+  ok('relayBase parses a valid https config (trims trailing slash); rejects junk/empty', () => {
+    set({ config: { relayBase: 'https://x.vercel.app/api/' } });
+    assert.strictEqual(t.relayBase(), 'https://x.vercel.app/api');
+    set({ config: { relayBase: 'ftp://nope' } });
+    assert.strictEqual(t.relayBase(), null);
+    set({ config: { relayBase: null } });
+    assert.strictEqual(t.relayBase(), null);
+  });
+  ok('detectBinding priority (sync): file->copy, config->relay, else->inbox', () => {
+    set({ protocol: 'file:' });
+    assert.strictEqual(t.detectBinding(), 'copy');
+    set({ protocol: 'https:', config: { relayBase: 'https://x.vercel.app/api' } });
+    assert.strictEqual(t.detectBinding(), 'relay');
+    set({ protocol: 'http:', config: null });
+    assert.strictEqual(t.detectBinding(), 'inbox');
+  });
+  restore();
+})();
+
+// Async transport tests (the inbox probe + URL routing) run last, then print the summary.
+(async () => {
+  const t = require('../js/support/transport');
+  const save = { location: global.location, fetch: global.fetch, window: global.window };
+  const set = (o) => {
+    global.location = { protocol: o.protocol || 'https:' };
+    global.window = { TTSupportConfig: 'config' in o ? o.config : null };
+    global.fetch = o.fetch;
+    t._resetBinding();
+  };
+  const restore = () => { global.location = save.location; global.window = save.window; global.fetch = save.fetch; t._resetBinding(); };
+  async function okA(name, fn) { await fn(); passed++; console.log(`  ok  ${name}`); }
+
+  await okA('resolveBinding: a configured relay WINS and the inbox is never probed (§6)', async () => {
+    let probed = false;
+    set({ config: { relayBase: 'https://r.vercel.app/api' }, fetch: async () => { probed = true; return { ok: true, json: async () => ({}) }; } });
+    assert.strictEqual(await t.resolveBinding(), 'relay');
+    assert.strictEqual(probed, false, 'must not probe the inbox when a relay is configured');
+  });
+  await okA('resolveBinding: no config -> inbox when it answers, copy when refused', async () => {
+    set({ config: null, fetch: async () => ({ ok: true, json: async () => ({ results: [] }) }) });
+    assert.strictEqual(await t.resolveBinding(), 'inbox');
+    set({ config: null, fetch: async () => { throw new Error('connection refused'); } });
+    assert.strictEqual(await t.resolveBinding(), 'copy');
+  });
+  await okA('file() posts to <relayBase>/tictac/issues carrying clientReportId (relay binding)', async () => {
+    let seen = null;
+    set({ config: { relayBase: 'https://r.vercel.app/api' }, fetch: async (url, opts) => { seen = { url, opts }; return { ok: true, json: async () => ({ source: 'github', number: 5, key: 'k' }) }; } });
+    const res = await t.file({ clientReportId: 'crid', reportType: 'bug', title: 'x', body: 'b', screenshot: 'data:image/png;base64,AAAA' });
+    assert.strictEqual(res.number, 5);
+    assert.strictEqual(seen.url, 'https://r.vercel.app/api/tictac/issues');
+    assert.strictEqual(JSON.parse(seen.opts.body).clientReportId, 'crid');
+  });
+  await okA('thread() puts the capability key in the X-Support-Key header, NEVER the URL (§3)', async () => {
+    let seen = null;
+    set({ config: { relayBase: 'https://r.vercel.app/api' }, fetch: async (url, opts) => { seen = { url, opts }; return { ok: true, json: async () => ({ number: 5 }) }; } });
+    await t.thread({ source: 'github', number: 5, key: 'SECRETKEY' });
+    assert.strictEqual(seen.url, 'https://r.vercel.app/api/tictac/issues/5');
+    assert.strictEqual(seen.opts.headers['X-Support-Key'], 'SECRETKEY');
+    assert.ok(!seen.url.includes('SECRETKEY'), 'key must never appear in the URL/query');
+  });
+  await okA('file:// degrades to a copy bundle with no network call', async () => {
+    let called = false;
+    set({ protocol: 'file:', config: null, fetch: async () => { called = true; return { ok: true, json: async () => ({}) }; } });
+    const res = await t.file({ clientReportId: 'c', reportType: 'bug', title: 'x', body: 'b' });
+    assert.ok(res.copy && res.copy.includes('tictac support report'), 'copy bundle returned');
+    assert.strictEqual(called, false, 'no network on the file:// degrade path');
+  });
+  restore();
+  console.log(`\nAll ${passed} tests passed.`);
+})().catch((e) => { console.error((e && e.stack) || e); process.exit(1); });
