@@ -50,6 +50,14 @@
     persist();
     refreshUserBar();
     applyTheme(); // board theme is per-user
+    // #23: a fresh user gets a clean slate — the lists/cats already re-read per-user below, but
+    // the puzzle/lesson DETAIL panes and their selection are module state that would otherwise
+    // keep showing the PREVIOUS user's open puzzle (with its "Correct" feedback + solved board)
+    // or lesson step. Clear both so no prior-user progress lingers in the view.
+    selectedPuzzle = null;
+    selectedLesson = null;
+    $('puzzle-detail').innerHTML = '<p class="muted">Pick a puzzle from the list.</p>';
+    $('lesson-detail').innerHTML = '<p class="muted">Pick a lesson from the list.</p>';
     // re-render whatever mode is visible
     rerenderActiveMode();
   }

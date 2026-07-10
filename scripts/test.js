@@ -281,6 +281,19 @@ console.log('store: match-code result recording is idempotent per (user, final b
     assert.strictEqual(nextId, 'scribble', 'still on the first opponent');
     assert.strictEqual(tournament.standings(tour).points, 0, 'points 0/12 is correct pre-completion, not a reset');
   });
+  ok('puzzle + lesson progress are isolated per user (data isolation #23)', () => {
+    let s = store.load();
+    store.ensureUser(s, 'pg'); store.ensureUser(s, 'eg');
+    store.recordPuzzleAttempt(s, 'pg', { id: 'w1', category: 'win1' }, 5, true);
+    store.getLessonProgress(s, 'pg', 'basics'); // creates pg's lesson entry
+    store.save(s);
+    s = store.load();
+    // pg keeps their history; eg is a clean slate — no bleed across the namespace
+    assert.ok((s.puzzleAttempts.pg || []).some((a) => a.id === 'w1' && a.correct), 'pg keeps their solve');
+    assert.deepStrictEqual(s.puzzleAttempts.eg || [], [], 'eg has no puzzle history');
+    assert.ok(s.lessons.pg && s.lessons.pg.basics, 'pg has lesson progress');
+    assert.ok(!(s.lessons.eg && Object.keys(s.lessons.eg).length), 'eg has no lesson history');
+  });
   ok('app-level settings namespace persists, distinct from per-user gami (support pre-work #73)', () => {
     let s = store.load();
     assert.strictEqual(store.getAppSetting(s, 'showSupportButton', false), false, 'defaults to the given default');
