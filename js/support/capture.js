@@ -123,7 +123,12 @@
       // The captured root is a <body>, not <html>, so `:root` var definitions (the base palette)
       // wouldn't apply. Rewrite `:root` -> `body` so those custom properties land on the clone
       // and cascade down (marks get their real colours instead of falling back to black).
-      style.textContent = collectCss().replace(/:root\b/g, 'body');
+      // Also neutralize animations/transitions (#22): a static SVG render doesn't run animations,
+      // so an element with `animation: … both` freezes at its 0% keyframe — the board's X/O marks
+      // animate in from `opacity:0` (drawOn), so they'd capture INVISIBLE. Forcing animation:none
+      // renders every element at its base/rest state (opacity 1), so the marks show.
+      style.textContent = collectCss().replace(/:root\b/g, 'body')
+        + '\n*, *::before, *::after { animation: none !important; transition: none !important; }';
       wrapper.appendChild(style);
       wrapper.appendChild(clone);
       const xhtml = new XMLSerializer().serializeToString(wrapper);

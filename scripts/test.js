@@ -281,18 +281,24 @@ console.log('store: match-code result recording is idempotent per (user, final b
     assert.strictEqual(nextId, 'scribble', 'still on the first opponent');
     assert.strictEqual(tournament.standings(tour).points, 0, 'points 0/12 is correct pre-completion, not a reset');
   });
-  ok('puzzle + lesson progress are isolated per user (data isolation #23)', () => {
+  ok('puzzle + lesson progress are isolated per user; a brand-new account is a clean slate (#23)', () => {
     let s = store.load();
-    store.ensureUser(s, 'pg'); store.ensureUser(s, 'eg');
-    store.recordPuzzleAttempt(s, 'pg', { id: 'w1', category: 'win1' }, 5, true);
+    store.ensureUser(s, 'pg');
     store.getLessonProgress(s, 'pg', 'basics'); // creates pg's lesson entry
+    // Reporter's exact repro (#23 reopen): pg solves EVERY puzzle...
+    for (const p of puzzles.PUZZLES) store.recordPuzzleAttempt(s, 'pg', p, p.correct[0], true);
+    store.save(s);
+    // ...then a BRAND-NEW account is created and must show ZERO solved.
+    s = store.load();
+    store.ensureUser(s, 'xg');
     store.save(s);
     s = store.load();
-    // pg keeps their history; eg is a clean slate — no bleed across the namespace
-    assert.ok((s.puzzleAttempts.pg || []).some((a) => a.id === 'w1' && a.correct), 'pg keeps their solve');
-    assert.deepStrictEqual(s.puzzleAttempts.eg || [], [], 'eg has no puzzle history');
+    const solvedFor = (u) => new Set(((s.puzzleAttempts[u]) || []).filter((a) => a.correct).map((a) => a.id));
+    assert.strictEqual(solvedFor('pg').size, puzzles.PUZZLES.length, 'pg has all puzzles solved');
+    assert.strictEqual(solvedFor('xg').size, 0, 'a brand-new account (xg) has 0 solved — no bleed');
+    assert.deepStrictEqual(Object.keys(s.puzzleAttempts).sort(), ['pg'], 'only pg holds any attempts');
     assert.ok(s.lessons.pg && s.lessons.pg.basics, 'pg has lesson progress');
-    assert.ok(!(s.lessons.eg && Object.keys(s.lessons.eg).length), 'eg has no lesson history');
+    assert.ok(!(s.lessons.xg && Object.keys(s.lessons.xg).length), 'xg has no lesson history');
   });
   ok('app-level settings namespace persists, distinct from per-user gami (support pre-work #73)', () => {
     let s = store.load();
