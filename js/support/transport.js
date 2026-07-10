@@ -160,13 +160,16 @@
     return r.results || [];
   }
 
-  // confirm(ref) → the Works ✓ verb. Distinct call; never inferred from text (§6).
-  async function confirm(ref) {
+  // confirm(ref, outcome, comment) → the graded Works✓ verb (#21). The TYPED outcome
+  // (works|partial|doesnt_work) drives the server-side state change; the optional comment is
+  // attached as data only and NEVER parsed for intent. Distinct call; never inferred from text (§6).
+  async function confirm(ref, outcome, comment) {
     const binding = await resolveBinding();
     if (binding === 'copy') throw new Error('offline: cannot confirm');
     return jsonFetch(verbUrl(binding, `/issues/${encodeURIComponent(ref.number)}/confirm`), {
       method: 'POST',
-      headers: { 'X-Support-Key': ref.key },
+      headers: { 'Content-Type': 'application/json', 'X-Support-Key': ref.key },
+      body: JSON.stringify({ outcome: outcome, comment: comment || '' }),
     });
   }
 

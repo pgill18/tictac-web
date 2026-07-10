@@ -338,22 +338,48 @@
       });
       p.appendChild(box); p.appendChild(rb); box.focus();
     }
-    // Works ✓ — explicit confirm, only when fix-ready; never inferred from text
+    // Graded fix-ready outcome (#21) — three explicit, TYPED choices. Only shown when fix-ready.
+    // The state change is driven by WHICH button is pressed (the typed outcome sent to the
+    // server), NEVER by the note text; the note is optional data attached to the outcome.
     if (view.workState === 'fix-ready' && view.resolution !== 'confirmed') {
-      const cb = $('button', 'support-btn primary', 'Works ✓'); cb.type = 'button';
-      cb.addEventListener('click', async () => {
-        cb.disabled = true;
+      const wrap = $('div', 'support-outcome');
+      wrap.appendChild($('p', 'support-fineprint', 'Did the fix work for you?'));
+      const note = $('textarea', 'support-textarea'); note.rows = 2;
+      note.placeholder = 'Optional: add a note for support';
+      note.setAttribute('aria-label', 'Optional note about the fix');
+      const row = $('div', 'support-outcome-btns');
+      const setDisabled = (v) => row.querySelectorAll('button').forEach((b) => { b.disabled = v; });
+      const send = async (outcome) => {
+        setDisabled(true);
         try {
-          const r = await transport.confirm(ref);
+          const r = await transport.confirm(ref, outcome, note.value.trim());
           if (r && r.ok) {
-            host.persist((s) => { const rr = store.findSupportReport(s, rec.clientReportId); if (rr) { rr.resolution = 'confirmed'; rr.workState = 'resolved'; } });
-            host.onReportEvent('report_confirmed', { number: ref.number }); // thanks moment
-            if (announcer) announcer.announce('Thanks for confirming the fix!');
+            host.persist((s) => {
+              const rr = store.findSupportReport(s, rec.clientReportId);
+              if (!rr) return;
+              if (outcome === 'works') { rr.resolution = 'confirmed'; rr.workState = 'resolved'; }
+              else if (outcome === 'doesnt_work') { rr.workState = 'in-progress'; }
+              // partial: no local state change — stays fix-ready
+            });
+            if (outcome === 'works') {
+              host.onReportEvent('report_confirmed', { number: ref.number }); // thanks moment (Contributor)
+              if (announcer) announcer.announce('Thanks for confirming the fix!');
+            } else if (outcome === 'doesnt_work') {
+              if (announcer) announcer.announce('Thanks — we’ve reopened this for support.');
+            } else if (announcer) { announcer.announce('Thanks — support will take another look.'); }
             openThread(rec.clientReportId);
-          } else cb.disabled = false;
-        } catch (e) { cb.disabled = false; }
-      });
-      p.appendChild(cb);
+          } else { setDisabled(false); }
+        } catch (e) { setDisabled(false); }
+      };
+      const bWorks = $('button', 'support-btn primary', 'Works'); bWorks.type = 'button';
+      bWorks.addEventListener('click', () => send('works'));
+      const bPartial = $('button', 'support-btn', 'Partially works'); bPartial.type = 'button';
+      bPartial.addEventListener('click', () => send('partial'));
+      const bNo = $('button', 'support-btn', 'Doesn’t work'); bNo.type = 'button';
+      bNo.addEventListener('click', () => send('doesnt_work'));
+      row.appendChild(bWorks); row.appendChild(bPartial); row.appendChild(bNo);
+      wrap.appendChild(note); wrap.appendChild(row);
+      p.appendChild(wrap);
     }
   }
 

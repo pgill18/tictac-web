@@ -47,6 +47,11 @@
 /* Filed confirmation (#18): a compact modal shown in place of the form after submit. */
 .support-panel--confirm { width: min(320px, calc(100vw - 32px)); }
 
+/* Graded fix-ready outcome (#21): a note field + a row of three outcome buttons. */
+.support-outcome { margin-top: 12px; }
+.support-outcome-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.support-outcome-btns .support-btn { display: inline-block; width: auto; margin: 0; flex: 1 1 auto; text-align: center; }
+
 .support-btn, .support-tool {
   display: inline-block; margin: 4px 6px 4px 0; padding: 8px 12px;
   border: 1px solid #7a5c34; border-radius: 6px; background: #f1e6d0; color: #2b2114;
