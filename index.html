@@ -6,8 +6,8 @@
   <title>tictac — learn and play tic-tac-toe</title>
   <!-- Inline SVG favicon (data URI) — no separate file, avoids the favicon.ico 404 on file:// and any static host. -->
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%237a33bd'/%3E%3Cg stroke='white' stroke-width='2' stroke-linecap='round'%3E%3Cline x1='11.5' y1='2' x2='11.5' y2='30'/%3E%3Cline x1='20.5' y1='2' x2='20.5' y2='30'/%3E%3Cline x1='2' y1='11.5' x2='30' y2='11.5'/%3E%3Cline x1='2' y1='20.5' x2='30' y2='20.5'/%3E%3C/g%3E%3Ctext x='6.5' y='9.5' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EX%3C/text%3E%3Ctext x='23' y='28' font-family='Arial,sans-serif' font-size='8' font-weight='bold' fill='white'%3EO%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="css/styles.css?v=29" />
-  <link rel="stylesheet" href="css/support.css?v=29" />
+  <link rel="stylesheet" href="css/styles.css?v=30" />
+  <link rel="stylesheet" href="css/support.css?v=30" />
 </head>
 <body>
   <header class="site-header">
@@ -181,30 +181,30 @@
        local asset below carries ?v=N, and on each release ALL are bumped to the SAME new N —
        so a browser/static host can never serve a stale mix of old+new files (root cause of the
        #15A stale-cache incident). Bump them together, not per-file. -->
-  <script src="js/app-version.js?v=29"></script>
-  <script src="js/board.js?v=29"></script>
-  <script src="js/ai.js?v=29"></script>
-  <script src="js/characters.js?v=29"></script>
-  <script src="js/tournament.js?v=29"></script>
-  <script src="js/puzzles.js?v=29"></script>
-  <script src="js/lessons.js?v=29"></script>
-  <script src="js/matchcode.js?v=29"></script>
-  <script src="js/gym.js?v=29"></script>
-  <script src="js/gamification.js?v=29"></script>
-  <script src="js/store.js?v=29"></script>
+  <script src="js/app-version.js?v=30"></script>
+  <script src="js/board.js?v=30"></script>
+  <script src="js/ai.js?v=30"></script>
+  <script src="js/characters.js?v=30"></script>
+  <script src="js/tournament.js?v=30"></script>
+  <script src="js/puzzles.js?v=30"></script>
+  <script src="js/lessons.js?v=30"></script>
+  <script src="js/matchcode.js?v=30"></script>
+  <script src="js/gym.js?v=30"></script>
+  <script src="js/gamification.js?v=30"></script>
+  <script src="js/store.js?v=30"></script>
   <!-- In-app support (S1) — self-contained modules under js/support/. a11y.js is iris's
        scaffolding; the rest wire to it. Loaded before app.js, which calls TTSupportWidget.init. -->
-  <script src="js/support/a11y.js?v=29"></script>
-  <script src="js/support/config.js?v=29"></script>
-  <script src="js/support/transport.js?v=29"></script>
-  <script src="js/support/context.js?v=29"></script>
-  <script src="js/support/capture.js?v=29"></script>
-  <script src="js/support/annotate.js?v=29"></script>
-  <script src="js/support/widget.js?v=29"></script>
+  <script src="js/support/a11y.js?v=30"></script>
+  <script src="js/support/config.js?v=30"></script>
+  <script src="js/support/transport.js?v=30"></script>
+  <script src="js/support/context.js?v=30"></script>
+  <script src="js/support/capture.js?v=30"></script>
+  <script src="js/support/annotate.js?v=30"></script>
+  <script src="js/support/widget.js?v=30"></script>
   <!-- UI controller -->
-  <script src="js/app.js?v=29"></script>
+  <script src="js/app.js?v=30"></script>
   <!-- Presentation-only finishing layer (winning-line ink strike + dry-voice copy).
        Reads rendered DOM only; touches no game logic, storage, or existing hooks. -->
-  <script src="js/flourish.js?v=29"></script>
+  <script src="js/flourish.js?v=30"></script>
 </body>
 </html>
