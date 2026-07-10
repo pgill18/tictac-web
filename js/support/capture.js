@@ -56,6 +56,23 @@
     }
   }
 
+  // Collect the page's CSS rules into one string, so they can be inlined INTO the foreignObject
+  // (#22). External stylesheets are not applied when an SVG is rendered via <img>, so anything
+  // drawn purely by CSS — the game board (grid via `.board::after`, cell layout, mark colours),
+  // and general styling — would otherwise be invisible in the shot. Same-origin sheets expose
+  // cssRules; a cross-origin sheet throws on access and is skipped.
+  function collectCss() {
+    let css = '';
+    const sheets = (typeof document !== 'undefined' && document.styleSheets) || [];
+    for (let i = 0; i < sheets.length; i++) {
+      let rules = null;
+      try { rules = sheets[i].cssRules; } catch (e) { rules = null; }
+      if (!rules) continue;
+      for (let j = 0; j < rules.length; j++) { css += rules[j].cssText + '\n'; }
+    }
+    return css;
+  }
+
   // Rasterize an XHTML string of width×height into a PNG data URL via SVG foreignObject.
   function rasterize(xhtml, width, height) {
     return new Promise((resolve) => {
@@ -93,9 +110,21 @@
       const clone = el.cloneNode(true);
       swapCanvases(el, clone);
       stripHidden(clone); // #17: drop .hidden (inactive tab) sections so they don't render in the style-less SVG
-      // Wrap the clone in a namespaced div so it's valid XHTML inside foreignObject.
+      // Drop the support widget's own UI (FAB + the open report dialog) — a report screenshot
+      // should show the APP being reported on, not the reporting dialog (which, now that CSS is
+      // inlined below, would otherwise render opaque over the content the user wants to annotate).
+      const ownUi = clone.querySelectorAll('.support-root');
+      for (let i = 0; i < ownUi.length; i++) { const n = ownUi[i]; if (n.parentNode) n.parentNode.removeChild(n); }
+      // Wrap the clone in a namespaced div so it's valid XHTML inside foreignObject, and inline
+      // the page CSS as a <style> so CSS-drawn content (the board, colours) actually renders (#22).
       const wrapper = document.createElement('div');
       wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+      const style = document.createElement('style');
+      // The captured root is a <body>, not <html>, so `:root` var definitions (the base palette)
+      // wouldn't apply. Rewrite `:root` -> `body` so those custom properties land on the clone
+      // and cascade down (marks get their real colours instead of falling back to black).
+      style.textContent = collectCss().replace(/:root\b/g, 'body');
+      wrapper.appendChild(style);
       wrapper.appendChild(clone);
       const xhtml = new XMLSerializer().serializeToString(wrapper);
 
