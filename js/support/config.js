@@ -10,10 +10,14 @@
 // operator) and verified — then this file is bumped and the webapp republished.
 (function (root) {
   'use strict';
+  // On LOCALHOST we deliberately leave relayBase null so the local inbox (S1) stays the dev
+  // fallback: transport.js then probes the loopback inbox first (config > inbox-probe > relay),
+  // preserving the offline/localhost loop per §6. Everywhere else (the live Pages site) we point
+  // at the armed S2 relay (Vercel project tictac-support-relay), whose endpoints live at
+  // `<relayBase>/tictac/issues` … .
+  var host = (typeof location !== 'undefined' && location.hostname) || '';
+  var isLocalhost = host === '127.0.0.1' || host === 'localhost' || host === '::1' || host === '';
   root.TTSupportConfig = {
-    // The armed S2 relay (Vercel project tictac-support-relay). Endpoints live at
-    // `<relayBase>/tictac/issues` … . On the live site this makes the widget file to the
-    // relay; on localhost dev with no config the inbox probe still wins for the local loop.
-    relayBase: 'https://tictac-support-relay.vercel.app/api',
+    relayBase: isLocalhost ? null : 'https://tictac-support-relay.vercel.app/api',
   };
 })(typeof self !== 'undefined' ? self : this);
