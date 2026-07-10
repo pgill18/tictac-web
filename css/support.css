@@ -18,22 +18,41 @@
 }
 .support-panel-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
 .support-panel-title { font-size: 1.1rem; margin: 0; flex: 1 1 auto; } /* fills, pushing the buttons right */
-.support-close, .support-max { border: none; background: none; line-height: 1; cursor: pointer; color: inherit; padding: 2px 4px; }
+.support-close, .support-max { border: none; background: none; line-height: 1; cursor: pointer; color: inherit; padding: 2px 4px; border-radius: 6px; }
 .support-close { font-size: 1.4rem; }
-.support-max { font-size: 1.15rem; }
+.support-close:hover, .support-max:hover { background: rgba(43,33,20,.08); }
+/* Maximize toggle icon: crisp inline-SVG (masked, inherits the button colour) swapped on
+   aria-pressed — replaces the unicode ⤢/⤡ which renders inconsistently across platforms.
+   dana still sets the glyph text; it's hidden here. Accessible name = the aria-label. */
+.support-max {
+  --support-ic-max: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z'/%3E%3C/svg%3E");
+  --support-ic-restore: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z'/%3E%3C/svg%3E");
+  font-size: 0; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+}
+.support-max::before {
+  content: ""; width: 17px; height: 17px; background: currentColor;
+  -webkit-mask: var(--support-ic-max) center / contain no-repeat;
+          mask: var(--support-ic-max) center / contain no-repeat;
+}
+.support-max[aria-pressed="true"]::before { -webkit-mask-image: var(--support-ic-restore); mask-image: var(--support-ic-restore); }
 
-/* Maximize (#16): near-full-window overlay so the annotator canvas (max-width:100%) has room. */
+/* Maximize (#16): near-full-window overlay so the annotator canvas (max-width:100%) has room.
+   A full-viewport warm scrim (spread box-shadow — no extra element) dims the app behind the
+   expanded dialog so the annotator reads as a focused overlay. */
 .support-panel--max {
   right: 16px; left: 16px; top: 16px; bottom: 16px;
   width: auto; max-height: none; height: auto;
+  box-shadow: 0 6px 24px rgba(0,0,0,.25), 0 0 0 100vmax rgba(43,33,20,.5);
 }
+/* Filed confirmation (#18): a compact modal shown in place of the form after submit. */
+.support-panel--confirm { width: min(320px, calc(100vw - 32px)); }
 
 .support-btn, .support-tool {
   display: inline-block; margin: 4px 6px 4px 0; padding: 8px 12px;
   border: 1px solid #7a5c34; border-radius: 6px; background: #f1e6d0; color: #2b2114;
   font: inherit; cursor: pointer;
 }
-.support-btn.primary { background: #6338d6; color: #fff; border-color: #4d2ba8; }
+.support-btn.primary { background: var(--grape, #7a33bd); color: #fff; border-color: var(--grape-dk, #5f2597); }
 .support-btn:disabled { opacity: .6; cursor: default; }
 .support-btn { display: block; width: 100%; margin: 8px 0; text-align: center; }
 .support-tool { display: inline-block; width: auto; padding: 4px 8px; font-size: .85rem; }
@@ -57,9 +76,9 @@
 .support-thread { margin: 8px 0; }
 .support-msg { margin: 6px 0; padding: 8px; border-radius: 8px; }
 .support-msg.from-support { background: #efe6d2; }
-.support-msg.from-you { background: #e5ddf6; }
+.support-msg.from-you { background: #ece1f3; }
 .support-msg-who { font-size: .72rem; color: #6a583c; margin-bottom: 2px; }
-.support-needsreply { font-weight: 600; color: #6338d6; }
+.support-needsreply { font-weight: 600; color: var(--grape, #7a33bd); }
 
 /* The a11y announcer region (TTA11y) if it needs visual hiding fallback. */
 .support-sr-only, .tta11y-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

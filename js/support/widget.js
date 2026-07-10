@@ -80,9 +80,15 @@
     if (a11y && a11y.createFocusTrap) trap = a11y.createFocusTrap(panel, { onClose: closePanel });
   }
 
-  function header(title) {
+  function header(title, opts) {
     const h = $('div', 'support-panel-head');
     h.appendChild($('h2', 'support-panel-title', title));
+    if (opts && opts.noMax) { // compact panels (e.g. the filed-confirmation) skip Maximize
+      const xc = $('button', 'support-close', '×');
+      xc.type = 'button'; xc.setAttribute('aria-label', 'Close'); xc.addEventListener('click', closePanel);
+      h.appendChild(xc);
+      return h;
+    }
     // Maximize toggle (#16): expand the panel to a near-full-window overlay so the screenshot
     // annotator has room to read/draw/type on. The annotate canvas is max-width:100% and maps
     // pointer coords via live getBoundingClientRect, so it scales up with the wider panel — no
@@ -209,13 +215,26 @@
       }));
       host.onReportEvent('report_filed', { number: res.number }); // thanks moment (Contributor)
       if (announcer) announcer.announce(`Filed as ${idLabel(res.number)}.`);
-      statusEl.textContent = `Filed as ${idLabel(res.number)}. Thank you!`;
-      sendBtn.textContent = 'Filed';
+      // #18: dismiss the New report modal and show a small confirmation modal in its place.
+      openFiled(res.number);
     } catch (e) {
       // Send failed — the local 'unsent' record stays, so it's visible in My reports.
       statusEl.textContent = 'Couldn’t send right now — your report is saved in “My reports”. Please try again.';
       sendBtn.disabled = false;
     }
+  }
+
+  // #18: compact confirmation modal shown in place of the New report modal after a successful
+  // filing (replaces the old "append the message at the bottom of the form" behavior).
+  function openFiled(number) {
+    openPanel((p) => {
+      p.classList.add('support-panel--confirm');
+      p.appendChild(header('Report filed', { noMax: true }));
+      p.appendChild($('p', 'support-status', `Filed as ${idLabel(number)}. Thank you!`));
+      const done = $('button', 'support-btn primary', 'Done'); done.type = 'button';
+      done.addEventListener('click', closePanel);
+      p.appendChild(done);
+    });
   }
 
   function tryClipboard(text) {
