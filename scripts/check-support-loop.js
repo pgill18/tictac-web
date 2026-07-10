@@ -45,7 +45,25 @@ fixes.forEach((f, i) => {
     const cites = new RegExp(`\\b[A-Z]{1,5}-${n}\\b|#${n}\\b|\\b${n}\\b`).test(String(f.note));
     if (!cites) problems.push(`fixes.json[${i}] note must cite report id ${n} (e.g. "TT-${n}")`);
   }
+  // STRUCTURED resolves (#99): the machine-readable list of reports this release advances to
+  // fix-ready via the apply-on-release endpoint. Required + well-formed, and MUST include the
+  // entry's own {source, number} so the note/id and the machine field can't drift apart.
+  if (!Array.isArray(f.resolves) || f.resolves.length === 0) {
+    problems.push(`fixes.json[${i}] missing "resolves":[{source,number}] (the machine-readable report refs this release advances)`);
+  } else {
+    f.resolves.forEach((r, j) => {
+      if (!r || typeof r.source !== 'string' || !r.source) problems.push(`fixes.json[${i}].resolves[${j}] missing string "source"`);
+      if (!Number.isInteger(r && r.number)) problems.push(`fixes.json[${i}].resolves[${j}] "number" must be an integer`);
+    });
+    const selfCited = f.resolves.some((r) => r && r.source === f.source && r.number === f.number);
+    if (!selfCited) problems.push(`fixes.json[${i}].resolves must include this entry's own report {source:"${f.source}",number:${f.number}}`);
+  }
 });
+
+// Bijection (report state <-> fixes entry) is enforced at apply-on-release time against live
+// GitHub state (an entry's resolves[] refs are advanced to fix-ready; drift there blocks the
+// release). Offline here we enforce the SCHEMA + self-citation link above so the machine field
+// can't silently diverge from the human note/id; the live report-state direction needs creds.
 
 // 2. append-only vs git base ------------------------------------------------
 let gitBase = null;
