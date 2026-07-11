@@ -328,6 +328,22 @@
     const s2 = tournamentMod.standings(tour);
     $('tour-standings').innerHTML = standingsHtml(s2);
 
+    // A just-finished game (win/loss/draw) must be SHOWN with its final board for a beat before
+    // we advance to the next opponent (TT-31 #31). Otherwise renderTour immediately reconstructs
+    // the next opponent's EMPTY board (tourGame.characterId !== nextId, and tour.board was nulled
+    // on finish), so the player's winning pieces appear to VANISH the instant they win — even
+    // though the win is recorded (the standings/green result still reference them). Render the
+    // in-memory finished board, hold, then advance.
+    if (tourGame && tourGame.status && tourGame.status !== 'in_progress') {
+      $('mode-tournament').setAttribute('data-character', charSlug(tourGame.characterId));
+      $('tour-persona').innerHTML = personaHtml(tourGame.characterId, voiceKeyForStatus(tourGame.status));
+      renderBoard($('tour-board'), tourGame.board, { interactive: false });
+      $('tour-status').innerHTML = `${aiStatusText(tourGame.status, tourGame.characterId)} — advancing…`;
+      tourGame = null;
+      setTimeout(renderTour, 1100);
+      return;
+    }
+
     const nextId = tournamentMod.nextOpponent(tour);
     if (!nextId) {
       // Complete.
