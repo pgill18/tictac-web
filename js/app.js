@@ -103,33 +103,42 @@
   // opts: { onCell(i), interactive:boolean, marks:{X,O} classes handled }
   function renderBoard(container, b, opts) {
     opts = opts || {};
-    container.innerHTML = '';
     container.classList.remove('empty');
+    // REUSE existing cell elements across renders (TT-31 #31): only a cell whose MARK actually
+    // changed is rewritten, which is what (re)triggers the mark "draw-on" fade-in. Previously every
+    // render wiped the board (innerHTML='') and recreated all 9 cells, so every already-placed mark
+    // re-animated from opacity:0 on every move — settled pieces flickered / appeared to vanish for a
+    // moment (and a screenshot taken then, or the pre-v35 capture freeze, showed them gone).
+    if (container.children.length !== 9) container.innerHTML = '';
     for (let i = 0; i < 9; i++) {
-      const cell = document.createElement('div');
+      let cell = container.children[i];
+      if (!cell) { cell = document.createElement('div'); container.appendChild(cell); }
       const mark = b[i];
-      if (mark) {
-        cell.className = `cell mark-${mark}`;
-        cell.textContent = mark;
-      } else {
-        cell.className = 'cell empty';
-        cell.textContent = String(i + 1); // visible position hint
+      const cur = cell.classList.contains('mark-X') ? 'X' : cell.classList.contains('mark-O') ? 'O' : null;
+      if (cur !== mark) {
+        // Mark changed → rewrite (this is the ONLY path that replays the draw-on animation).
+        if (mark) { cell.className = `cell mark-${mark}`; cell.textContent = mark; }
+        else { cell.className = 'cell empty'; cell.textContent = String(i + 1); } // visible position hint
       }
+      // (Re)apply interactivity every render — opts/handlers can differ between renders. Use a single
+      // replaceable onclick (NOT addEventListener) so reused cells never accumulate stale handlers.
       const canPlay = opts.interactive && !mark && opts.onCell;
+      cell.classList.toggle('playable', !!canPlay);
+      cell.classList.toggle('disabled', !!(opts.interactive && !canPlay));
       if (canPlay) {
-        cell.classList.add('playable');
-        // a11y (#87): label the cell so a screen reader reads its meaning, not the raw
-        // digit ("1"). The visible number stays for sighted users; aria-label overrides it.
+        // a11y (#87): label the cell so a screen reader reads its meaning, not the raw digit ("1").
         cell.setAttribute('role', 'button');
         cell.setAttribute('aria-label', `Play position ${i + 1}`);
-        cell.addEventListener('click', () => opts.onCell(i));
-      } else if (opts.interactive) {
-        cell.classList.add('disabled');
+        cell.onclick = () => opts.onCell(i);
+      } else {
+        cell.removeAttribute('role');
+        cell.removeAttribute('aria-label');
+        cell.onclick = null;
       }
-      // An empty, non-playable cell's position digit is purely decorative — hide it from
-      // the a11y tree so it isn't read out as a bare "1".."9" (#87/#65-class).
+      // An empty, non-playable cell's position digit is purely decorative — hide it from the a11y
+      // tree so it isn't read out as a bare "1".."9" (#87/#65-class).
       if (!mark && !canPlay) cell.setAttribute('aria-hidden', 'true');
-      container.appendChild(cell);
+      else cell.removeAttribute('aria-hidden');
     }
   }
 
@@ -581,16 +590,22 @@
     const p = puzzlesMod.byId(selectedPuzzle);
     if (!p) return;
     const detail = $('puzzle-detail');
-    detail.innerHTML = `
-      <h3>${escapeHtml(p.label)}</h3>
-      <p class="muted">${escapeHtml(p.toMove)} to move — ${escapeHtml(GOAL[p.category])}.</p>
-      <div class="board" id="puzzle-board"></div>
-      <div id="puzzle-feedback"></div>`;
+    // Only rebuild the shell when switching to a DIFFERENT puzzle (or the board is missing) —
+    // otherwise keep #puzzle-board across the answer re-render so renderBoard reuses its cells and
+    // the pre-existing pieces don't re-animate/flicker when you place the answer (TT-31 #31).
+    if (detail.getAttribute('data-puzzle') !== p.id || !$('puzzle-board')) {
+      detail.setAttribute('data-puzzle', p.id);
+      detail.innerHTML = `
+        <h3>${escapeHtml(p.label)}</h3>
+        <p class="muted">${escapeHtml(p.toMove)} to move — ${escapeHtml(GOAL[p.category])}.</p>
+        <div class="board" id="puzzle-board"></div>
+        <div id="puzzle-feedback"></div>`;
+    }
     renderBoard($('puzzle-board'), displayBoard || p.board, {
       interactive: true,
       onCell: (i) => solvePuzzle(p, i + 1),
     });
-    if (feedback) $('puzzle-feedback').innerHTML = feedback;
+    $('puzzle-feedback').innerHTML = feedback || '';
   }
 
   function solvePuzzle(p, pos) {

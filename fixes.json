@@ -119,7 +119,7 @@
   {
     "source": "github",
     "number": 31,
-    "fixedIn": "v36",
+    "fixedIn": "v37",
     "fixedAt": "2026-07-10",
     "resolves": [
       {
@@ -127,6 +127,6 @@
         "number": 31
       }
     ],
-    "note": "Tournament: winning a game no longer instantly clears the board — your winning line stays visible for a moment before advancing to the next opponent, instead of your pieces appearing to vanish the instant you win. (TT-31)"
+    "note": "Placed pieces no longer flicker or appear to vanish when you make a move — the board now keeps settled marks in place and only animates the new one, instead of re-drawing every piece each move (which could momentarily blank out an earlier piece, e.g. an X in a puzzle). Also: winning a tournament game holds your winning board on screen before advancing. (TT-31)"
   }
 ]
