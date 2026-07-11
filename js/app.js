@@ -693,6 +693,19 @@
     if (feedback) $('lesson-feedback').innerHTML = feedback;
   }
 
+  // If playing `pos` (1-indexed) as X on `stepBoard` creates a fork (two or more
+  // winning threats), return a sentence naming those winning squares. Else null.
+  function forkExplain(stepBoard, pos) {
+    const nb = stepBoard.slice();
+    nb[pos - 1] = 'X';
+    const wins = board.winningCells(nb, 'X').map((i) => i + 1).sort((a, b) => a - b);
+    if (wins.length < 2) return null;
+    const list = wins.length === 2
+      ? `${wins[0]} and ${wins[1]}`
+      : `${wins.slice(0, -1).join(', ')} and ${wins[wins.length - 1]}`;
+    return `Playing ${pos} makes two winning threats at once (you can win at ${list}). O can only block one — that is a fork.`;
+  }
+
   function answerLesson(l, pos) {
     reload();
     const prog = store.getLessonProgress(s, currentUser, l.id);
@@ -703,8 +716,10 @@
       renderLessonDetail(`<div class="feedback incorrect"><span class="tag">Not quite.</span> ${escapeHtml(step.hint)}</div>`);
       return;
     }
-    // Correct → advance.
-    const okMsg = `<div class="feedback correct"><span class="tag">Correct.</span> ${escapeHtml(step.explainOk)}</div>`;
+    // Correct → advance. For a fork move, name the two threats the played move
+    // actually created (any accepted fork square gets an accurate explanation);
+    // otherwise fall back to the step's static explainOk.
+    const okMsg = `<div class="feedback correct"><span class="tag">Correct.</span> ${escapeHtml(forkExplain(step.board, pos) || step.explainOk)}</div>`;
     prog.step += 1;
     if (prog.step >= l.steps.length) {
       prog.completed = true;

@@ -128,5 +128,18 @@
       }
     ],
     "note": "Placed pieces no longer flicker or appear to vanish when you make a move — the board now keeps settled marks in place and only animates the new one, instead of re-drawing every piece each move (which could momentarily blank out an earlier piece, e.g. an X in a puzzle). Also: winning a tournament game holds your winning board on screen before advancing. (TT-31)"
+  },
+  {
+    "source": "github",
+    "number": 32,
+    "fixedIn": "v38",
+    "fixedAt": "2026-07-11",
+    "resolves": [
+      {
+        "source": "github",
+        "number": 32
+      }
+    ],
+    "note": "Fork lessons now accept EVERY square that creates a fork, not one hardcoded 'correct' answer — e.g. in the first fork lesson, playing 2 is credited just like 3 (both make two winning threats). The 'Correct' feedback now names the two threats your specific move created. Applied to all three fork lessons, and the lesson verifier now enforces that any win/block/fork step accepts every square achieving that tactic so this can't regress. (TT-32)"
   }
 ]

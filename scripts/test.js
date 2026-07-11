@@ -129,6 +129,34 @@ ok('4+ lessons, each 3+ steps; every step validated', () => {
   assert.strictEqual(problems.length, 0, `lesson problems: ${problems.join('; ')}`);
 });
 
+ok('TT-32: fork lessons accept EVERY fork square, not one hardcoded answer', () => {
+  const forks = lessons.LESSONS.find((l) => l.id === 'forks');
+  for (let i = 0; i < forks.steps.length; i++) {
+    const step = forks.steps[i];
+    // Every empty square that yields 2+ winning threats must be in `correct`...
+    for (let idx = 0; idx < 9; idx++) {
+      if (step.board[idx] !== null) continue;
+      const nb = step.board.slice();
+      nb[idx] = step.toMove;
+      if (board.winningCells(nb, step.toMove).length >= 2) {
+        assert.ok(step.correct.includes(idx + 1),
+          `forks step ${i + 1}: ${idx + 1} is a fork but is rejected`);
+      }
+    }
+    // ...and every declared answer must actually be a fork.
+    for (const pos of step.correct) {
+      const nb = step.board.slice();
+      nb[pos - 1] = step.toMove;
+      assert.ok(board.winningCells(nb, step.toMove).length >= 2,
+        `forks step ${i + 1}: declared ${pos} is not a fork`);
+    }
+  }
+  // The specific report: step 1 must accept position 2 (as well as 3).
+  const s1 = forks.steps[0];
+  assert.ok(s1.correct.includes(2) && s1.correct.includes(3),
+    'forks step 1 must accept both 2 and 3');
+});
+
 console.log('match-code codec round-trip:');
 ok('encode -> decode restores the exact board (empty, mid-game, finished)', () => {
   const cases = [

@@ -55,6 +55,25 @@ function validateAll() {
         if (!r.ok) { problems.push(`${where}: ${r.reason}`); report.push(`${where}: FAIL: ${r.reason}`); stepOk = false; }
         else kinds.add(r.kind);
       }
+      // Completeness: for a step teaching a tactic (win/block/fork), the declared
+      // set must accept EVERY empty square that achieves that same tactic — not one
+      // hardcoded answer (TT-32: a fork lesson rejected a second, equally-valid fork).
+      // Strategic/opening steps are exempt (many squares are "fine", no unique tactic).
+      for (const kind of ['win', 'block', 'fork']) {
+        if (!kinds.has(kind)) continue;
+        const all = [];
+        for (let idx = 0; idx < 9; idx++) {
+          if (step.board[idx] !== null) continue;
+          const r = checkMove(step, idx + 1);
+          if (r.ok && r.kind === kind) all.push(idx + 1);
+        }
+        const missing = all.filter((p) => !step.correct.includes(p));
+        if (missing.length) {
+          problems.push(`${where}: incomplete ${kind} set — also accepts ${missing.join(',')}`);
+          report.push(`${where}: FAIL: incomplete ${kind} set — also accepts ${missing.join(',')}`);
+          stepOk = false;
+        }
+      }
       if (stepOk) report.push(`${where}: OK (${[...kinds].join('/')})`);
     }
   }
