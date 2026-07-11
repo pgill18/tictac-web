@@ -623,7 +623,10 @@
     let html;
     let displayBoard;
     if (correct) {
-      html = `<div class="feedback correct"><span class="tag">Correct.</span> ${escapeHtml(p.explain)}</div>`;
+      // For a fork puzzle, name the two threats the played move actually made, so
+      // any accepted fork square gets an accurate explanation (not one hardcoded move).
+      const explain = p.category === 'fork' ? (forkExplain(p.board, pos) || p.explain) : p.explain;
+      html = `<div class="feedback correct"><span class="tag">Correct.</span> ${escapeHtml(explain)}</div>`;
       // Show the winning move played on the board so the user sees the position they found.
       displayBoard = p.board.slice();
       displayBoard[pos - 1] = p.toMove;

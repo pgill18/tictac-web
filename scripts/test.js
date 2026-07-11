@@ -118,6 +118,24 @@ ok('12+ puzzles across 4 categories, all valid', () => {
   }
 });
 
+ok('TT-33: fork puzzles accept EVERY fork square, not one hardcoded answer', () => {
+  for (const p of puzzles.byCategory('fork')) {
+    for (let idx = 0; idx < 9; idx++) {
+      if (p.board[idx] !== null) continue;
+      const nb = p.board.slice();
+      nb[idx] = p.toMove;
+      if (board.winner(nb) !== p.toMove && board.winningCells(nb, p.toMove).length >= 2) {
+        assert.ok(p.correct.includes(idx + 1),
+          `${p.id}: ${idx + 1} is a fork but is rejected`);
+      }
+    }
+  }
+  // The specific report (fork-1 shares the reported board): must accept 2 as well as 3.
+  const f1 = puzzles.byId('fork-1');
+  assert.ok(f1.correct.includes(2) && f1.correct.includes(3),
+    'fork-1 must accept both 2 and 3');
+});
+
 console.log('lessons:');
 const { validateAll } = require('./verify-lessons');
 ok('4+ lessons, each 3+ steps; every step validated', () => {

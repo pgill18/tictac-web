@@ -141,5 +141,18 @@
       }
     ],
     "note": "Fork lessons now accept EVERY square that creates a fork, not one hardcoded 'correct' answer — e.g. in the first fork lesson, playing 2 is credited just like 3 (both make two winning threats). The 'Correct' feedback now names the two threats your specific move created. Applied to all three fork lessons, and the lesson verifier now enforces that any win/block/fork step accepts every square achieving that tactic so this can't regress. (TT-32)"
+  },
+  {
+    "source": "github",
+    "number": 33,
+    "fixedIn": "v39",
+    "fixedAt": "2026-07-11",
+    "resolves": [
+      {
+        "source": "github",
+        "number": 33
+      }
+    ],
+    "note": "Same fix as TT-32, now in Puzzles: the fork puzzles credited only one hardcoded answer and marked other genuinely-correct forks wrong. All three fork puzzles now accept EVERY square that makes a fork, and the 'Correct' feedback names the two threats your move created. The puzzle verifier now proves completeness — a puzzle must accept every square that solves it for its category (win1/win2/block/fork) — so an incomplete answer set can't ship again. (TT-33)"
   }
 ]

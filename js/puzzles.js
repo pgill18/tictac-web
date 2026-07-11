@@ -79,18 +79,18 @@
     // ---------------- fork ----------------
     {
       id: 'fork-1', category: 'fork', label: 'Make a double threat',
-      board: b([0, 4], [3, 5]), toMove: 'X', correct: [3 /* placeholder, validated */],
-      explain: 'Playing 3 makes two threats at once — the top row (win at 2) and the 3–5–7 diagonal (win at 7). O can only block one.',
+      board: b([0, 4], [3, 5]), toMove: 'X', correct: [2, 3, 7, 8],
+      explain: 'A fork makes two winning threats at once, so O can only block one and you win with the other. Several squares work here.',
     },
     {
       id: 'fork-2', category: 'fork', label: 'Fork from the corner',
-      board: b([2, 4], [3, 7]), toMove: 'X', correct: [1],
-      explain: 'Playing 1 forks: the top row (win at 2) and the 1–5–9 diagonal (win at 9).',
+      board: b([2, 4], [3, 7]), toMove: 'X', correct: [1, 2, 6, 9],
+      explain: 'A fork is two threats from one move — O cannot block both. More than one square forks here.',
     },
     {
       id: 'fork-3', category: 'fork', label: 'Fork with the bottom corner',
-      board: b([0, 4], [1, 7]), toMove: 'X', correct: [7],
-      explain: 'Playing 7 forks: the left column (win at 4) and the 3–5–7 diagonal (win at 3).',
+      board: b([0, 4], [1, 7]), toMove: 'X', correct: [3, 4, 6, 7],
+      explain: 'Two threats, one move — O can only stop one. Several squares create a fork here.',
     },
 
     // ---------------- win2 (forced win in two of your moves) ----------------
@@ -154,7 +154,39 @@
         return { ok: false, reason: `unknown category ${p.category}` };
       }
     }
+
+    // Completeness: `correct` must list EVERY square that satisfies the category,
+    // not one hardcoded answer — otherwise a genuinely-correct alternative gets
+    // marked wrong (TT-33: fork puzzles rejected a second, equally-valid fork).
+    const full = allSolutions(p);
+    const missing = full.filter((pos) => !p.correct.includes(pos));
+    if (missing.length) {
+      return { ok: false, reason: `incomplete set — also solved by ${missing.join(',')}` };
+    }
     return { ok: true };
+  }
+
+  // Every square that solves puzzle `p` for its category (the ground-truth set).
+  function allSolutions(p) {
+    const me = p.toMove;
+    const them = other(me);
+    const out = [];
+    const oppThreatened = board.winningCells(p.board, them).length > 0;
+    for (const i of board.legalMoves(p.board)) {
+      const test = p.board.slice();
+      test[i] = me;
+      const pos = i + 1;
+      if (p.category === 'win1') {
+        if (board.winner(test) === me) out.push(pos);
+      } else if (p.category === 'block') {
+        if (board.winningCells(p.board, them).includes(i)) out.push(pos);
+      } else if (p.category === 'fork') {
+        if (!oppThreatened && board.winner(test) !== me && board.winningCells(test, me).length >= 2) out.push(pos);
+      } else if (p.category === 'win2') {
+        if (board.winner(test) !== me && ai.minimax(test, them, me, 1) > 0) out.push(pos);
+      }
+    }
+    return out;
   }
 
   // Compute, for a position, every move that leads to a forced win for `me`
